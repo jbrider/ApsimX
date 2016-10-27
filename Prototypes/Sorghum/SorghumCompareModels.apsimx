@@ -1439,36 +1439,79 @@ Hammer et al (2009) used a constant extraction front velocity of 2.5cm per day i
           </AddFunction>
           <WhenToHold>FloralInitiation</WhenToHold>
         </HoldFunction>
-        <AccumulateFunction>
+        <AddFunction>
           <Name>LeafNo</Name>
-          <MinimumFunction>
-            <Name>MinimumFunction</Name>
-            <VariableReference>
-              <Name>LeavesRemaining</Name>
-              <VariableName>[Leaf].LeavesRemaining.Value</VariableName>
-            </VariableReference>
-            <MaximumFunction>
-              <Name>MaximumFunction</Name>
-              <DivideFunction>
-                <Name>DivideFunction</Name>
-                <VariableReference>
-                  <Name>ThermalTime</Name>
-                  <VariableName>[Phenology].ThermalTime.Value</VariableName>
-                </VariableReference>
-                <VariableReference>
-                  <Name>LeafAppearanceRate</Name>
-                  <VariableName>[Leaf].LeafAppearanceRate.Value</VariableName>
-                </VariableReference>
-              </DivideFunction>
+          <AccumulateFunction>
+            <Name>LeafNo</Name>
+            <MinimumFunction>
+              <Name>MinimumFunction</Name>
+              <VariableReference>
+                <Name>LeavesRemaining</Name>
+                <VariableName>[Leaf].LeavesRemaining.Value</VariableName>
+              </VariableReference>
+              <MaximumFunction>
+                <Name>MaximumFunction</Name>
+                <DivideFunction>
+                  <Name>DivideFunction</Name>
+                  <VariableReference>
+                    <Name>ThermalTime</Name>
+                    <VariableName>[Phenology].ThermalTime.Value</VariableName>
+                  </VariableReference>
+                  <VariableReference>
+                    <Name>LeafAppearanceRate</Name>
+                    <VariableName>[Leaf].LeafAppearanceRate.Value</VariableName>
+                  </VariableReference>
+                </DivideFunction>
+                <Constant>
+                  <Name>Zero</Name>
+                  <Value>0</Value>
+                </Constant>
+              </MaximumFunction>
+            </MinimumFunction>
+            <StartStageName>Emergence</StartStageName>
+            <EndStageName>HarvestRipe</EndStageName>
+          </AccumulateFunction>
+          <OnEventFunction>
+            <Name>OnEventFunction</Name>
+            <Constant>
+              <Name>PreEventValue</Name>
+              <Value>0</Value>
+            </Constant>
+            <SubtractFunction>
+              <Name>PostEventValue</Name>
               <Constant>
-                <Name>Zero</Name>
-                <Value>0</Value>
+                <Name>InitialLeaves</Name>
+                <Value>1</Value>
               </Constant>
-            </MaximumFunction>
-          </MinimumFunction>
-          <StartStageName>Emergence</StartStageName>
-          <EndStageName>HarvestRipe</EndStageName>
-        </AccumulateFunction>
+              <MinimumFunction>
+                <Name>MinimumFunction</Name>
+                <VariableReference>
+                  <Name>LeavesRemaining</Name>
+                  <VariableName>[Leaf].LeavesRemaining.Value</VariableName>
+                </VariableReference>
+                <MaximumFunction>
+                  <Name>MaximumFunction</Name>
+                  <DivideFunction>
+                    <Name>DivideFunction</Name>
+                    <VariableReference>
+                      <Name>ThermalTime</Name>
+                      <VariableName>[Phenology].ThermalTime.Value</VariableName>
+                    </VariableReference>
+                    <VariableReference>
+                      <Name>LeafAppearanceRate</Name>
+                      <VariableName>[Leaf].LeafAppearanceRate.Value</VariableName>
+                    </VariableReference>
+                  </DivideFunction>
+                  <Constant>
+                    <Name>Zero</Name>
+                    <Value>0</Value>
+                  </Constant>
+                </MaximumFunction>
+              </MinimumFunction>
+            </SubtractFunction>
+            <SetEvent>Emergence</SetEvent>
+          </OnEventFunction>
+        </AddFunction>
         <MaximumFunction>
           <Name>LeavesRemaining</Name>
           <SubtractFunction>
