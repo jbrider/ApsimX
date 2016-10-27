@@ -4789,8 +4789,8 @@ namespace Models
               <string>[Sorghum].Grain.NumberFunction.Value as grainno</string>
               <string>[Sorghum].Grain.Size as grainsize </string>
               <string>[Sorghum].Leaf.LeafNo.Value as leafno</string>
-              <string>[Sorghum].Leaf.LeavesRemaining.Value</string>
-              <string>[Leaf].FinalLeafNo.Value</string>
+              <string>[Sorghum].Leaf.LeavesRemaining.Value as leavesRemaining</string>
+              <string>[Leaf].FinalLeafNo.Value as FinalLeafNo </string>
               <string>[Leaf].LeafAppearanceRate.Value</string>
               <string>[Soil].SoilWater.ESW as esw</string>
               <string>[Sorghum].Phenology.Juvenile.Target.Value</string>
@@ -4809,13 +4809,13 @@ namespace Models
               <string>[Phenology].Maturing.Target.Value</string>
               <string>[Phenology].MaturityToHarvestRipe.Target.Value</string>
               <string>[Phenology].TTFromEmergence.Value</string>
-              <string>[Leaf].TPLA.Value</string>
+              <string>[Leaf].LAI as LAI</string>
+              <string>[Leaf].TPLA.Value as TPLA</string>
               <string>[Leaf].TPLA2.Value</string>
               <string>[Leaf].TPLAMax.Value</string>
               <string>[Leaf].TPLAToday.Value</string>
               <string>[Leaf].Exponent.Value</string>
               <string>[Leaf].TPLAInflection.Value</string>
-              <string>[Leaf].LAI</string>
               <string>[Phenology].TTEmergToFlagLeaf.Value</string>
               <string>[Leaf].CoverGreen</string>
               <string>[Leaf].RadIntTot</string>
@@ -5162,77 +5162,6 @@ namespace Models
           <TableName>Report</TableName>
           <XFieldName>date</XFieldName>
           <YFieldName>Structure.LeafTipsAppeared</YFieldName>
-          <ShowInLegend>true</ShowInLegend>
-          <IncludeSeriesNameInLegend>true</IncludeSeriesNameInLegend>
-          <Cumulative>false</Cumulative>
-          <CumulativeX>false</CumulativeX>
-        </Series>
-        <Axis>
-          <Type>Bottom</Type>
-          <Title />
-          <Inverted>false</Inverted>
-          <Minimum>NaN</Minimum>
-          <Maximum>NaN</Maximum>
-          <Interval>NaN</Interval>
-        </Axis>
-        <Axis>
-          <Type>Left</Type>
-          <Title />
-          <Inverted>false</Inverted>
-          <Minimum>NaN</Minimum>
-          <Maximum>NaN</Maximum>
-          <Interval>NaN</Interval>
-        </Axis>
-        <Axis>
-          <Type>Right</Type>
-          <Inverted>false</Inverted>
-          <Minimum>NaN</Minimum>
-          <Maximum>NaN</Maximum>
-          <Interval>NaN</Interval>
-        </Axis>
-        <LegendPosition>TopLeft</LegendPosition>
-        <DisabledSeries />
-        <IncludeInDocumentation>false</IncludeInDocumentation>
-      </Graph>
-      <Graph>
-        <Name>TPLA</Name>
-        <Series>
-          <Name>TPLA</Name>
-          <Type>Scatter</Type>
-          <XAxis>Bottom</XAxis>
-          <YAxis>Left</YAxis>
-          <ColourArgb>-16736653</ColourArgb>
-          <FactorIndexToVaryColours>-1</FactorIndexToVaryColours>
-          <FactorIndexToVaryMarkers>-1</FactorIndexToVaryMarkers>
-          <FactorIndexToVaryLines>-1</FactorIndexToVaryLines>
-          <Marker>None</Marker>
-          <MarkerSize>Normal</MarkerSize>
-          <Line>Solid</Line>
-          <LineThickness>Normal</LineThickness>
-          <TableName>Report</TableName>
-          <XFieldName>Phenology.TTFromEmergence.Value</XFieldName>
-          <YFieldName>Leaf.TPLA.Value</YFieldName>
-          <ShowInLegend>true</ShowInLegend>
-          <IncludeSeriesNameInLegend>true</IncludeSeriesNameInLegend>
-          <Cumulative>false</Cumulative>
-          <CumulativeX>false</CumulativeX>
-        </Series>
-        <Series>
-          <Name>LAI</Name>
-          <Type>Scatter</Type>
-          <XAxis>Bottom</XAxis>
-          <YAxis>Right</YAxis>
-          <ColourArgb>-16747854</ColourArgb>
-          <FactorIndexToVaryColours>-1</FactorIndexToVaryColours>
-          <FactorIndexToVaryMarkers>-1</FactorIndexToVaryMarkers>
-          <FactorIndexToVaryLines>-1</FactorIndexToVaryLines>
-          <Marker>None</Marker>
-          <MarkerSize>Normal</MarkerSize>
-          <Line>Solid</Line>
-          <LineThickness>Normal</LineThickness>
-          <TableName>Report</TableName>
-          <XFieldName>Phenology.TTFromEmergence.Value</XFieldName>
-          <YFieldName>Leaf.LAI</YFieldName>
           <ShowInLegend>true</ShowInLegend>
           <IncludeSeriesNameInLegend>true</IncludeSeriesNameInLegend>
           <Cumulative>false</Cumulative>
@@ -5906,6 +5835,69 @@ namespace Models
           <TableName>OldModel</TableName>
           <XFieldName>date</XFieldName>
           <YFieldName>leafno</YFieldName>
+          <ShowInLegend>true</ShowInLegend>
+          <IncludeSeriesNameInLegend>false</IncludeSeriesNameInLegend>
+          <Cumulative>false</Cumulative>
+          <CumulativeX>false</CumulativeX>
+        </Series>
+        <Axis>
+          <Type>Bottom</Type>
+          <Title />
+          <Inverted>false</Inverted>
+          <Minimum>NaN</Minimum>
+          <Maximum>NaN</Maximum>
+          <Interval>NaN</Interval>
+        </Axis>
+        <Axis>
+          <Type>Right</Type>
+          <Inverted>false</Inverted>
+          <Minimum>NaN</Minimum>
+          <Maximum>NaN</Maximum>
+          <Interval>NaN</Interval>
+        </Axis>
+        <LegendPosition>TopLeft</LegendPosition>
+        <DisabledSeries />
+        <IncludeInDocumentation>false</IncludeInDocumentation>
+      </Graph>
+      <Graph>
+        <Name>LAI</Name>
+        <Series>
+          <Name>New</Name>
+          <Type>Scatter</Type>
+          <XAxis>Bottom</XAxis>
+          <YAxis>Right</YAxis>
+          <ColourArgb>-1663232</ColourArgb>
+          <FactorIndexToVaryColours>-1</FactorIndexToVaryColours>
+          <FactorIndexToVaryMarkers>-1</FactorIndexToVaryMarkers>
+          <FactorIndexToVaryLines>-1</FactorIndexToVaryLines>
+          <Marker>None</Marker>
+          <MarkerSize>Normal</MarkerSize>
+          <Line>Solid</Line>
+          <LineThickness>Normal</LineThickness>
+          <TableName>Report</TableName>
+          <XFieldName>date</XFieldName>
+          <YFieldName>LAI</YFieldName>
+          <ShowInLegend>true</ShowInLegend>
+          <IncludeSeriesNameInLegend>true</IncludeSeriesNameInLegend>
+          <Cumulative>false</Cumulative>
+          <CumulativeX>false</CumulativeX>
+        </Series>
+        <Series>
+          <Name>Old</Name>
+          <Type>Scatter</Type>
+          <XAxis>Bottom</XAxis>
+          <YAxis>Right</YAxis>
+          <ColourArgb>-2793984</ColourArgb>
+          <FactorIndexToVaryColours>-1</FactorIndexToVaryColours>
+          <FactorIndexToVaryMarkers>-1</FactorIndexToVaryMarkers>
+          <FactorIndexToVaryLines>-1</FactorIndexToVaryLines>
+          <Marker>None</Marker>
+          <MarkerSize>Normal</MarkerSize>
+          <Line>Dash</Line>
+          <LineThickness>Normal</LineThickness>
+          <TableName>OldModel</TableName>
+          <XFieldName>date</XFieldName>
+          <YFieldName>LAI</YFieldName>
           <ShowInLegend>true</ShowInLegend>
           <IncludeSeriesNameInLegend>false</IncludeSeriesNameInLegend>
           <Cumulative>false</Cumulative>
