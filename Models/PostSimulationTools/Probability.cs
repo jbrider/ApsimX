@@ -13,6 +13,7 @@ namespace Models.PostSimulationTools
     using Storage;
 
     /// <summary>
+    /// # [Name]
     /// A post processing model that creates a probability table.
     /// </summary>
     [ViewName("UserInterface.Views.GridView")]
@@ -25,7 +26,7 @@ namespace Models.PostSimulationTools
         /// Gets or sets the name of the predicted/observed table name.
         /// </summary>
         [Description("Table name")]
-        [Display(DisplayType = DisplayAttribute.DisplayTypeEnum.TableName)]
+        [Display(Type = DisplayType.TableName)]
         public string TableName { get; set; }
 
         /// <summary>
@@ -41,9 +42,9 @@ namespace Models.PostSimulationTools
         /// <param name="dataStore">The DataStore to work with</param>
         public void Run(IStorageReader dataStore)
         {
-            dataStore.DeleteTable(this.Name);
+            dataStore.DeleteDataInTable(this.Name);
 
-            DataTable simulationData = dataStore.GetData("*", this.TableName);
+            DataTable simulationData = dataStore.GetData(TableName, fieldNames: dataStore.GetTableColumns(TableName));
             if (simulationData != null)
             {
                 // Add all the necessary columns to our data table.
@@ -86,7 +87,7 @@ namespace Models.PostSimulationTools
 
                 // Write the stats data to the DataStore
                 probabilityData.TableName = this.Name;
-                dataStore.WriteTableRaw(probabilityData);
+                dataStore.WriteTable(probabilityData);
             }
         }
     }

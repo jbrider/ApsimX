@@ -11,12 +11,18 @@ namespace Models
     using System;
     using System.Diagnostics;
     using System.IO;
+    using System.Collections.Generic;
     using System.Linq;
 
     /// <summary>Class to hold a static main entry point.</summary>
     public class Program
     {
         private static string errors = string.Empty;
+
+        /// <summary>
+        /// List of files to be run.
+        /// </summary>
+        private static List<string> files = new List<string>();
 
         /// <summary>
         /// Main program entry point.
@@ -39,8 +45,35 @@ namespace Models
                 if (args.Length >= 1)
                     fileName = args[0];
 
-                if (args.Length < 1 || args.Length > 4)
-                    throw new Exception("Usage: ApsimX ApsimXFileSpec [/Recurse] [/SingleThreaded] [/RunTests]");
+                string usageMessage = "Usage: Models ApsimXFileSpec [/Recurse] [/SingleThreaded] [/RunTests] [/Csv] [/Version] [/?]";
+                if (args.Contains("/?"))
+                {
+                    string detailedHelpInfo = usageMessage;
+                    detailedHelpInfo += Environment.NewLine + Environment.NewLine;
+                    detailedHelpInfo += "ApsimXFileSpec:          The path to an .apsimx file. May include wildcard.";
+                    detailedHelpInfo += Environment.NewLine + Environment.NewLine + "Options:" + Environment.NewLine;
+                    detailedHelpInfo += "    /Recurse             Recursively search subdirectories for files matching ApsimXFileSpec" + Environment.NewLine;
+                    detailedHelpInfo += "    /SingleThreaded      Run all simulations in a single thread." + Environment.NewLine;
+                    detailedHelpInfo += "    /RunTests            Run all tests." + Environment.NewLine;
+                    detailedHelpInfo += "    /Csv                 Export all reports to .csv files." + Environment.NewLine;
+                    detailedHelpInfo += "    /Version             Display the version number." + Environment.NewLine;
+                    detailedHelpInfo += "    /?                   Show detailed help information.";
+                    Console.WriteLine(detailedHelpInfo);
+                    return 1;
+                }
+
+                if (args.Length < 1 || args.Length > 7)
+                {
+                    Console.WriteLine(usageMessage);
+                    return 1;
+                }
+
+                if (args.Contains("/Version"))
+                {
+                    Model m = new Model();
+                    Console.WriteLine(m.ApsimVersion);
+                    return 0;
+                }
 
                 Stopwatch timer = new Stopwatch();
                 timer.Start();
@@ -59,6 +92,17 @@ namespace Models
                     jobRunner = new JobRunnerSync();
                 else
                     jobRunner = new JobRunnerAsync();
+                if (args.Select(arg => arg.ToLower()).Contains("/csv"))
+                {
+                    string dir = Path.GetDirectoryName(fileName);
+                    if (dir == "")
+                        dir = Directory.GetCurrentDirectory();
+                    files = Directory.GetFiles(
+                        dir,
+                        Path.GetFileName(fileName),
+                        args.Contains("/Recurse") ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly).ToList();
+                    jobRunner.AllJobsCompleted += GenerateCsvFiles;
+                }
                 jobRunner.JobCompleted += OnJobCompleted;
                 jobRunner.AllJobsCompleted += OnAllJobsCompleted;
                 jobRunner.Run(job, wait: true);
@@ -83,6 +127,23 @@ namespace Models
             }
 
             return exitCode;
+        }
+
+        /// <summary>
+        /// Generates a .csv file for each .apsimx file that has been run.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void GenerateCsvFiles(object sender, AllCompletedArgs e)
+        {
+            foreach (string file in files)
+            {
+                string fileName = Path.ChangeExtension(file, ".db");
+                Storage.DataStore storage = new Storage.DataStore(fileName);
+                storage.Open(true);
+                Report.Report.WriteAllTables(storage, fileName);
+                Console.WriteLine("Successfully created csv file " + Path.ChangeExtension(fileName, ".csv"));
+            }
         }
 
         /// <summary>Job has completed</summary>

@@ -70,11 +70,18 @@ namespace UserInterface.Presenters
             this.weatherDataView.ExcelSheetChangeClicked += this.ExcelSheetValueChanged;
 
             this.WriteTableAndSummary(this.weatherData.FullFileName, this.weatherData.ExcelWorkSheetName);
+            this.weatherDataView.TabIndex = this.weatherData.ActiveTabIndex;
+            if (this.weatherData.StartYear >= 0)
+                this.weatherDataView.GraphStartYearValue = this.weatherData.StartYear;
+            this.weatherDataView.GraphShowYearsValue = this.weatherData.ShowYears;
         }
 
         /// <summary>Detach the model from the view.</summary>
         public void Detach()
         {
+            this.weatherData.ActiveTabIndex = this.weatherDataView.TabIndex;
+            this.weatherData.StartYear = this.weatherDataView.GraphStartYearValue;
+            this.weatherData.ShowYears = this.weatherDataView.GraphShowYearsValue;
             this.weatherDataView.BrowseClicked -= this.OnBrowse;
             this.weatherDataView.GraphRefreshClicked -= this.GraphRefreshValueChanged;
             this.weatherDataView.ExcelSheetChangeClicked -= this.ExcelSheetValueChanged;
@@ -161,6 +168,8 @@ namespace UserInterface.Presenters
         /// <param name="sheetName">The name of the sheet</param>
         private void WriteTableAndSummary(string filename, string sheetName = "")
         {
+            // Clear any previos error message
+            this.explorerPresenter.MainPresenter.ShowMessage(" ", Simulation.MessageType.Information);
             // Clear any previous summary
             this.weatherDataView.Summarylabel = string.Empty;
             this.weatherDataView.GraphSummary.Clear();
@@ -197,11 +206,11 @@ namespace UserInterface.Presenters
                         this.weatherDataView.ShowExcelSheets(false);
                     }
 
-                    (this.weatherDataView as TabbedMetDataView).WaitCursor = true;
+                    ViewBase.MasterView.WaitCursor = true;
                     try
                     {
                         this.weatherData.ExcelWorkSheetName = sheetName;
-                        this.weatherData.FullFileName = PathUtilities.GetAbsolutePath(filename, this.explorerPresenter.ApsimXFile.FileName);
+                        explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(weatherData, "FullFileName", PathUtilities.GetAbsolutePath(filename, this.explorerPresenter.ApsimXFile.FileName)));
 
                         using (DataTable data = this.weatherData.GetAllData())
                         {
@@ -212,11 +221,14 @@ namespace UserInterface.Presenters
                             this.DisplayDetailedGraphs(data);
                         }
 
-                        this.explorerPresenter.MainPresenter.ShowMessage(" ", Simulation.ErrorLevel.Information);
+                    }
+                    catch (Exception err)
+                    {
+                        explorerPresenter.MainPresenter.ShowError(err);
                     }
                     finally
                     {
-                        (this.weatherDataView as TabbedMetDataView).WaitCursor = false;
+                        ViewBase.MasterView.WaitCursor = false;
                         this.weatherData.CloseDataFile();
                     }
                 }
@@ -225,7 +237,7 @@ namespace UserInterface.Presenters
                     string message = err.Message;
                     message += "\r\n" + err.StackTrace;
                     this.weatherDataView.Summarylabel = err.Message;
-                    this.explorerPresenter.MainPresenter.ShowMessage(message, Simulation.ErrorLevel.Error);
+                    this.explorerPresenter.MainPresenter.ShowError(err);
                 }
             }
 

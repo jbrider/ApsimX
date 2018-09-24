@@ -5,6 +5,7 @@ using Models.Interfaces;
 namespace Models.Agroforestry
 {
     /// <summary>
+    /// # [Name]
     /// Class to calculate and communicate local microclimate in agroforestry systems
     /// </summary>
     [Serializable]
@@ -31,6 +32,11 @@ namespace Models.Agroforestry
 
         /// <summary>Gets or sets the minimum temperature (oc)</summary>
         public double MinT { get { return weather.MinT; } }
+
+        /// <summary>
+        /// Daily Mean temperature (oC)
+        /// </summary>
+        public double MeanT { get { return (MaxT + MinT) / 2; } }
 
         /// <summary>Gets or sets the rainfall (mm)</summary>
         public double Rain { get { return weather.Rain; } }

@@ -75,7 +75,9 @@ namespace Models.Soils
         {
             get
             {
-                if (double.IsNaN(this.fractionFull))
+                if (Soil == null)
+                    return 0;
+                else if (double.IsNaN(this.fractionFull))
                 {
                     // Get the plant available water (mm/mm)
                     double[] pawc;
@@ -111,10 +113,10 @@ namespace Models.Soils
             set
             {
                 if (!double.IsNaN(value))
-                {
-                    this.fractionFull = value;
                     this.depthOfWetSoil = double.NaN;
-                }
+                else if (!double.IsNaN(this.fractionFull))
+                    this.depthOfWetSoil = TotalSoilDepth() * this.fractionFull;
+                this.fractionFull = value;
             }
         }
 
@@ -134,10 +136,10 @@ namespace Models.Soils
             set
             {
                 if (!double.IsNaN(value))
-                {
-                    this.depthOfWetSoil = value;
                     this.fractionFull = double.NaN;
-                }
+                else if (!double.IsNaN(this.depthOfWetSoil))
+                    this.fractionFull = this.FractionFull;
+                this.depthOfWetSoil = value;
             }
         }
 
@@ -366,6 +368,15 @@ namespace Models.Soils
             }
 
             return sw;
+        }
+
+        /// <summary>
+        /// Returns the total depth of the soil, in mm
+        /// </summary>
+        /// <returns>Total soil depth</returns>
+        public double TotalSoilDepth()
+        {
+            return MathUtilities.Sum(Soil.Thickness);
         }
     }
 }

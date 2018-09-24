@@ -33,6 +33,9 @@ namespace Utility
         /// <summary>The previous folder where a file was opened or saved</summary>
         public string PreviousFolder { get; set; }
 
+        /// <summary>The previous height of the status panel</summary>
+        public int StatusPanelHeight { get; set; }
+
         /// <summary>Return the name of the summary file JPG.</summary>
         public string SummaryPngFileName
         {
@@ -70,6 +73,21 @@ namespace Utility
 
         /// <summary>The maximum number of rows to show on a report grid</summary>
         public int MaximumRowsOnReportGrid { get; set; }
+
+        /// <summary>
+        /// Store the style name used in the editor
+        /// </summary>
+        public string EditorStyleName { get; set; } = "Visual Studio";
+
+        /// <summary>
+        /// Store the zoom level for editors
+        /// </summary>
+        public double EditorZoom { get; set; } = 1.0;
+
+        /// <summary>
+        /// Store the user's preferred font size
+        /// </summary>
+        public double BaseFontSize { get; set; } = 12.5;
 
         /// <summary>Add a filename to the list.</summary>
         /// <param name="filename">File path</param>

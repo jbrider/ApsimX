@@ -1,7 +1,7 @@
 ﻿using Models;
 using Models.Core;
 using Models.Core.Interfaces;
-using Models.PMF.Functions;
+using Models.Functions;
 using Models.Storage;
 using NUnit.Framework;
 using System;
@@ -81,6 +81,16 @@ namespace UnitTests
 
         [ParentLink]
         public Simulation sim = null;
+    }
+
+    [Serializable]
+    class ModelWithLinkByPath : Model
+    {
+        [LinkByPath(Path = "[zone2].irrig1")]
+        public IIrrigation irrigation1 = null;
+
+        [LinkByPath(Path = ".Simulations.Simulation.zone2.irrig2")]
+        public IIrrigation irrigation2 = null;
     }
 
     [Serializable]
@@ -281,6 +291,31 @@ namespace UnitTests
             Assert.AreEqual(modelWithParentLink.sim.Name, "Simulation");
         }
 
+        /// <summary>Ensure a [LinkByPath] works</summary>
+        [Test]
+        public void Links_EnsureLinkByPathWorks()
+        {
+            ModelWithLinkByPath modelWithLinkByPath = new UnitTests.ModelWithLinkByPath();
+
+            // Create a simulation
+            Simulation simulation = new Simulation();
+            simulation.Children.Add(new Clock());
+            simulation.Children.Add(new MockSummary());
+            simulation.Children.Add(new Zone() { Name = "zone1" });
+            simulation.Children.Add(new Zone() { Name = "zone2" });
+            simulation.Children[2].Children.Add(modelWithLinkByPath); // added to zone1
+            MockIrrigation irrig1 = new MockIrrigation() { Name = "irrig1" };
+            MockIrrigation irrig2 = new MockIrrigation() { Name = "irrig2" };
+            simulation.Children[3].Children.Add(irrig1); // added to zone2
+            simulation.Children[3].Children.Add(irrig2); // added to zone2
+
+            Simulations engine = Simulations.Create(new Model[] { simulation, new DataStore() });
+            engine.Links.Resolve(simulation, allLinks:true);
+
+            Assert.AreEqual(modelWithLinkByPath.irrigation1, irrig1);
+            Assert.AreEqual(modelWithLinkByPath.irrigation2, irrig2);
+        }
+
         /// <summary>Ensure link can resolve services</summary>
         [Test]
         public void Links_EnsureServicesResolve()
@@ -293,7 +328,7 @@ namespace UnitTests
 
             Simulations engine = Simulations.Create(new Model[] { simulation, new DataStore() });
 
-            engine.Links.Resolve(simulation);
+            engine.Links.Resolve(simulation, allLinks:true);
 
             Assert.IsNotNull(modelWithServices.storage);
             Assert.IsNotNull(modelWithServices.locator);

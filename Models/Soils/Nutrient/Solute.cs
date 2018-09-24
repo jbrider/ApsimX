@@ -4,7 +4,7 @@ namespace Models.Soils.Nutrient
 {
     using Core;
     using Interfaces;
-    using PMF.Functions;
+    using Functions;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -12,6 +12,7 @@ namespace Models.Soils.Nutrient
     using System.Threading.Tasks;
 
     /// <summary>
+    /// # [Name]
     /// Encapsulates a solute class.
     /// </summary>
     [Serializable]

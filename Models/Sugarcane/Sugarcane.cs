@@ -17,6 +17,7 @@ namespace Models
     {
 
     /// <summary>
+    /// # [Name]
     ///##Model Components Overview
     ///
     ///Crop dry weight accumulation is driven by the conversion of intercepted radiation to biomass, via a radiation-use efficiency (RUE). 
@@ -210,7 +211,7 @@ namespace Models
     ///Secondly, the daily dry weight increment between structural stem and sucrose shifts in favour of sucrose as water deficits develop. 
     ///
     ///
-    ///#Water excess limitation
+    ///##Water excess limitation
     ///The proportion of the root system exposed to saturated or near saturated soil water conditions is calculated and used to calculate a water logging stress factor. 
     ///This factor reduces photosynthetic activity via an effect on RUE.
     ///
@@ -351,7 +352,7 @@ namespace Models
     [ViewName("UserInterface.Views.GridView")]
     [PresenterName("UserInterface.Presenters.PropertyPresenter")]
     [ValidParent(ParentType=typeof(Zone))]
-    public class Sugarcane : Model, ICrop, ICanopy, IUptake
+    public class Sugarcane : Model, IPlant, ICanopy, IUptake
     {
 
         #region Canopy interface
@@ -462,7 +463,14 @@ namespace Models
 
         #endregion
 
+        /// <summary>Gets a value indicating how leguminous a plant is</summary>
+        public double Legumosity { get { return 0; } }
 
+        /// <summary>Gets a value indicating whether the biomass is from a c4 plant or not</summary>
+        public bool IsC4 { get { return true; } }
+
+        /// <summary>Aboveground mass</summary>
+        public Biomass AboveGround { get { return new Biomass(); } }
 
         //CONSTANTS
 
@@ -12068,7 +12076,7 @@ namespace Models
         /// <param name="soilstate"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public List<ZoneWaterAndN> GetSWUptakes(SoilState soilstate)  
+        public List<ZoneWaterAndN> GetWaterUptakeEstimates(SoilState soilstate)  
             {
                 throw new NotImplementedException();
             }
@@ -12078,7 +12086,7 @@ namespace Models
         /// <param name="soilstate"></param>
         /// <returns></returns>
         /// <exception cref="System.NotImplementedException"></exception>
-        public List<ZoneWaterAndN> GetNUptakes(SoilState soilstate)
+        public List<ZoneWaterAndN> GetNitrogenUptakeEstimates(SoilState soilstate)
         {
             throw new NotImplementedException();
         }
@@ -12088,13 +12096,13 @@ namespace Models
         /// Set the sw uptake for today
         /// </summary>
         /// <param name="info"></param>
-        public void SetSWUptake(List<ZoneWaterAndN> info)
+        public void SetActualWaterUptake(List<ZoneWaterAndN> info)
         { }
         /// <summary>
         /// Set the n uptake for today
         /// </summary>
         /// <param name="info"></param>
-        public void SetNUptake(List<ZoneWaterAndN> info)
+        public void SetActualNitrogenUptakes(List<ZoneWaterAndN> info)
         { }
 
 
@@ -12483,7 +12491,7 @@ namespace Models
                 //SW DEMAND (Atomospheric Potential)
 
                 //sugar_water_demand(1);
-                g_sw_demand = sugar_water_demand(g_dlt_dm_pot_rue, g_transp_eff, g_lai, Soil.SoilWater.Eo);
+                g_sw_demand = sugar_water_demand(g_dlt_dm_pot_rue, g_transp_eff, g_lai, (Soil.SoilWater as SoilWater).Eo);
  
 
 
@@ -14205,8 +14213,8 @@ namespace Models
                     }
 
 
-                solutes.Add("NO3", l_dlt_NO3);
-                solutes.Add("NH4", l_dlt_NH4);
+                solutes.Add("NO3", SoluteManager.SoluteSetterType.Plant, l_dlt_NO3);
+                solutes.Add("NH4", SoluteManager.SoluteSetterType.Plant, l_dlt_NH4);
 
 
 
@@ -14232,8 +14240,8 @@ namespace Models
                     }
 
 
-                solutes.Add("NO3", l_dlt_NO3);
-                solutes.Add("NH4", l_dlt_NH4);
+                solutes.Add("NO3", SoluteManager.SoluteSetterType.Plant, l_dlt_NO3);
+                solutes.Add("NH4", SoluteManager.SoluteSetterType.Plant, l_dlt_NH4);
             }
             else
                 {
@@ -14596,9 +14604,16 @@ namespace Models
 
         #endregion
 
-
+        /// <summary>
+        /// Biomass has been removed from the plant.
+        /// </summary>
+        /// <param name="fractionRemoved">The fraction of biomass removed</param>
+        public void BiomassRemovalComplete(double fractionRemoved)
+        {
 
         }
+
+    }
 
     
     }

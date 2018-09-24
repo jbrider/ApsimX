@@ -1,23 +1,27 @@
-﻿using APSIM.Shared.Utilities;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Xml.Serialization;
+﻿//-----------------------------------------------------------------------
+// Encapsulates a table that needs writing to the database
+//-----------------------------------------------------------------------
 
 namespace Models.Storage
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Data;
+    using System.Linq;
+    using System.Reflection;
+    using System.Text;
+    using System.Xml.Serialization;
+    using APSIM.Shared.Utilities;
+
     /// <summary>Encapsulates a table that needs writing to the database.</summary>
     class Table
     {
         public class Column
         {
             public string Name { get; private set; }
-            public string Units { get; private set; }
-            public string SQLiteDataType { get; set; }
+            public string Units { get; set; }
+            public string DatabaseDataType { get; set; }
 
             /// <summary>Constructor</summary>
             /// <param name="columnName">Name of column</param>
@@ -27,7 +31,7 @@ namespace Models.Storage
             {
                 Name = columnName;
                 Units = columnUnits;
-                SQLiteDataType = dataTypeString;
+                DatabaseDataType = dataTypeString;
             }
         }
 
@@ -39,6 +43,12 @@ namespace Models.Storage
 
         /// <summary>A set of column names for quickly checking if columns exist in this table.</summary>
         private SortedSet<string> sortedColumnNames = new SortedSet<string>();
+
+        /// <summary>Have we checked for a simulation ID column?</summary>
+        private bool haveCheckedForSimulationIDColumn = false;
+
+        /// <summary>Have we checked for a simulation ID column?</summary>
+        private Dictionary<string, int> columnIndexes = new Dictionary<string, int>();
 
         /// <summary>Name of table.</summary>
         public string Name { get; private set; }
@@ -58,16 +68,32 @@ namespace Models.Storage
         {
             Name = tableName;
             Columns = new List<Column>();
-            Columns.Add(new Column("SimulationID", null, "integer"));
+            Columns.Add(new Column("CheckpointID", null, "integer"));
         }
 
         /// <summary>Add a row to our list of rows to write</summary>
-        /// <param name="simulationID"></param>
-        /// <param name="rowColumnNames"></param>
-        /// <param name="rowColumnUnits"></param>
-        /// <param name="rowValues"></param>
-        public void AddRow(int simulationID, IEnumerable<string> rowColumnNames, IEnumerable<string> rowColumnUnits, IEnumerable<object> rowValues)
+        /// <param name="connection"></param>
+        /// <param name="checkpointID">ID of checkpoint</param>
+        /// <param name="simulationID">ID of simulation</param>
+        /// <param name="rowColumnNames">Column names of values</param>
+        /// <param name="rowColumnUnits">Units of values</param>
+        /// <param name="rowValues">The values</param>
+        public void AddRow(IDatabaseConnection connection, int checkpointID, int simulationID, IEnumerable<string> rowColumnNames, IEnumerable<string> rowColumnUnits, IEnumerable<object> rowValues)
         {
+            // If we have a valid simulation ID then make sure SimulationID is at index 1 in the Columns
+            lock (lockObject)
+                {
+                if (!haveCheckedForSimulationIDColumn && simulationID != -1 && Columns.Find(column => column.Name == "SimulationID") == null)
+                {
+                    Column simIDColumn = new Column("SimulationID", null, "integer");
+                    if (Columns.Count > 1)
+                        Columns.Insert(1, simIDColumn);
+                    else
+                        Columns.Add(simIDColumn);
+                    haveCheckedForSimulationIDColumn = true;
+                }
+            }
+
             // We want all rows to be a normalised flat table. All rows must have the same number of values
             // and be in correct order i.e. like a .NET DataTable.
 
@@ -82,7 +108,7 @@ namespace Models.Storage
                     if (!sortedColumnNames.Contains(rowColumnNames.ElementAt(i)))
                     {
                         object value = rowValues.ElementAt(i);
-                        string dataType = GetSQLiteDataType(value);
+                        string dataType = connection.GetDBDataTypeName(value);
 
                         sortedColumnNames.Add(rowColumnNames.ElementAt(i));
                         Columns.Add(new Column(rowColumnNames.ElementAt(i),
@@ -104,36 +130,44 @@ namespace Models.Storage
             lock (lockObject)
             {
                 object[] newRow = new object[Columns.Count];
-                newRow[0] = simulationID;
+                newRow[0] = checkpointID;
+                if (simulationID > 0)
+                    newRow[1] = simulationID;
                 for (int i = 0; i < rowColumnNames.Count(); i++)
                 {
-                    int columnIndex = Columns.FindIndex(column => column.Name == rowColumnNames.ElementAt(i));
+                    // Get a column index for the column - use a cache (dictionary) to speed up lookups.
+                    string columnName = rowColumnNames.ElementAt(i);
+                    int columnIndex;
+                    if (!columnIndexes.TryGetValue(columnName, out columnIndex))
+                    {
+                        columnIndex = Columns.FindIndex(column => column.Name == columnName);
+                        columnIndexes.Add(columnName, columnIndex);
+                    }
                     newRow[columnIndex] = rowValues.ElementAt(i);
-                    if (Columns[columnIndex].SQLiteDataType == null)
-                        Columns[columnIndex].SQLiteDataType = GetSQLiteDataType(newRow[columnIndex]);
+                    if (Columns[columnIndex].DatabaseDataType == null)
+                        Columns[columnIndex].DatabaseDataType = connection.GetDBDataTypeName(newRow[columnIndex]);
                 }
                 RowsToWrite.Add(newRow);
             }
         }
 
         /// <summary>Set the connection</summary>
-        /// <param name="connection">The SQLite connection</param>
-        public void SetConnection(SQLite connection)
+        /// <param name="connection">The database connection</param>
+        public void SetConnection(IDatabaseConnection connection)
         {
-            Open(connection);
+            ConfigureColumns(connection);
         }
 
-        /// <summary>Open the table and get a list of columns and simulation ids.</summary>
-        /// <param name="connection">The SQLite connection to open</param>
-        private void Open(SQLite connection)
+        /// <summary>Get a list of columns and simulation ids.</summary>
+        /// <param name="connection">The database connection to use</param>
+        private void ConfigureColumns(IDatabaseConnection connection)
         {
             lock (lockObject)
             {
                 Columns.Clear();
-                DataTable data = connection.ExecuteQuery("pragma table_info('" + Name + "')");
-                foreach (DataRow row in data.Rows)
+                List<string> colNames = connection.GetTableColumns(Name);
+                foreach (string columnName in colNames)
                 {
-                    string columnName = row["Name"].ToString();
                     string units = null;
                     units = LookupUnitsForColumn(connection, columnName);
                     Columns.Add(new Column(columnName, units, null));
@@ -142,21 +176,20 @@ namespace Models.Storage
         }
 
         /// <summary>Write the specified number of rows.</summary>
-        /// <param name="connection">The SQLite connection to write to</param>
+        /// <param name="connection">The database connection to write to</param>
         /// <param name="simulationIDs">A dictionary of simulation IDs</param>
-        public void WriteRows(SQLite connection, Dictionary<string, int> simulationIDs)
-        { 
-            IntPtr preparedInsertQuery = IntPtr.Zero;
+        public void WriteRows(IDatabaseConnection connection, Dictionary<string, int> simulationIDs)
+        {
             try
             {
                 List<string> columnNames = new List<string>();
                 List<object[]> values = new List<object[]>();
-                // If the table exists, make sure it has the required columns, otherwise create the table
 
+                // If the table exists, make sure it has the required columns, otherwise create the table
                 lock (lockObject)
                 {
                     int numRows = RowsToWrite.Count;
-                    if (TableExists(connection, Name))
+                    if (connection.TableExists(Name))
                         AlterTable(connection);
                     else
                         CreateTable(connection);
@@ -166,16 +199,11 @@ namespace Models.Storage
                     RowsToWrite.RemoveRange(0, numRows);
                 }
 
-                // Create an insert query
-                preparedInsertQuery = CreateInsertQuery(connection, columnNames);
-
-                for (int rowIndex = 0; rowIndex < values.Count; rowIndex++)
-                    connection.BindParametersAndRunQuery(preparedInsertQuery, values[rowIndex]);
+                connection.InsertRows(Name, columnNames, values);
             }
             finally
             {
-                if (preparedInsertQuery != IntPtr.Zero)
-                    connection.Finalize(preparedInsertQuery);
+
             }
         }
 
@@ -184,30 +212,35 @@ namespace Models.Storage
         {
             foreach (Column column in table.Columns)
             {
-                if (Columns.Find(c => c.Name == column.Name) == null)
+                Column foundColumn = Columns.Find(c => c.Name == column.Name);
+                if (foundColumn == null)
                     Columns.Add(column);
+                else
+                {
+                    foundColumn.Units = column.Units;
+                    foundColumn.DatabaseDataType = column.DatabaseDataType;
+                }
             }
         }
 
-        /// <summary>Does the specified table exist?</summary>
-        /// <param name="connection">SQLite connection</param>
-        /// <param name="tableName">The table name to look for</param>
-        private bool TableExists(SQLite connection, string tableName)
+        /// <summary>Does the table have the specified column name</summary>
+        /// <param name="fieldName">Column name to look for</param>
+        public bool HasColumn(string fieldName)
         {
-            List<string> tableNames = DataTableUtilities.GetColumnAsStrings(connection.ExecuteQuery("SELECT * FROM sqlite_master"), "Name").ToList();
-            return tableNames.Contains(tableName);
+            return Columns.Find(column => column.Name.Equals(fieldName, StringComparison.CurrentCultureIgnoreCase)) != null;
         }
 
+
         /// <summary>Lookup and return units for the specified column.</summary>
-        /// <param name="connection">SQLite connection</param>
+        /// <param name="connection">Database connection</param>
         /// <param name="columnName">The column name to return units for</param>
-        private string LookupUnitsForColumn(SQLite connection, string columnName)
+        private string LookupUnitsForColumn(IDatabaseConnection connection, string columnName)
         {
             StringBuilder sql = new StringBuilder();
             sql.Append("SELECT Units FROM _Units WHERE TableName='");
             sql.Append(Name);
             sql.Append("' AND ColumnHeading='");
-            sql.Append(columnName);
+            sql.Append(columnName.Trim('\''));
             sql.Append("'");
             DataTable data = connection.ExecuteQuery(sql.ToString());
             if (data.Rows.Count > 0)
@@ -217,37 +250,28 @@ namespace Models.Storage
         }
 
         /// <summary>Ensure columns exist in .db file</summary>
-        /// <param name="connection">The SQLite connection to write to</param>
-        private void CreateTable(SQLite connection)
+        /// <param name="connection">The database connection to write to</param>
+        private void CreateTable(IDatabaseConnection connection)
         {
-            StringBuilder sql = new StringBuilder();
+            List<string> colNames = new List<string>();
+            List<string> colTypes = new List<string>();
+            foreach (Column col in Columns)
+            {
+                colNames.Add(col.Name);
+                colTypes.Add(col.DatabaseDataType);
+            }
+
             lock (lockObject)
             {
-                foreach (Column col in Columns)
-                {
-                    if (sql.Length > 0)
-                        sql.Append(',');
-
-                    sql.Append("[");
-                    sql.Append(col.Name);
-                    sql.Append("] ");
-                    if (col.SQLiteDataType == null)
-                        sql.Append("integer");
-                    else
-                        sql.Append(col.SQLiteDataType);
-                }
+                connection.CreateTable(Name, colNames, colTypes);
             }
-            sql.Insert(0, "CREATE TABLE " + Name + " (");
-            sql.Append(')');
-            connection.ExecuteNonQuery(sql.ToString());
         }
 
         /// <summary>Alter an existing table ensuring all columns exist.</summary>
-        /// <param name="connection">The SQLite connection to write to</param>
-        private void AlterTable(SQLite connection)
+        /// <param name="connection">The database connection to write to</param>
+        private void AlterTable(IDatabaseConnection connection)
         {
-            DataTable columnData = connection.ExecuteQuery("pragma table_info('" + Name + "')");
-            List<string> existingColumns = DataTableUtilities.GetColumnAsStrings(columnData, "Name").ToList();
+            List<string> existingColumns = connection.GetTableColumns(Name);
 
             lock (lockObject)
             {
@@ -256,10 +280,10 @@ namespace Models.Storage
                     if (!existingColumns.Contains(col.Name))
                     {
                         string dataTypeString;
-                        if (col.SQLiteDataType == null)
+                        if (col.DatabaseDataType == null)
                             dataTypeString = "integer";
                         else
-                            dataTypeString = col.SQLiteDataType;
+                            dataTypeString = col.DatabaseDataType;
 
                         string sql = "ALTER TABLE " + Name + " ADD COLUMN [" + col.Name + "] " + dataTypeString;
                         connection.ExecuteNonQuery(sql);
@@ -268,66 +292,11 @@ namespace Models.Storage
             }
         }
 
-        /// <summary>Convert .NET type into an SQLite type</summary>
-        private string GetSQLiteDataType(object value)
-        {
-            // Convert the value we found above into an SQLite data type string and return it.
-            Type type = null;
-            if (value == null)
-                return null;
-            else
-                type = value.GetType();
-
-            if (type == null)
-                return "integer";
-            else if (type.ToString() == "System.DateTime")
-                return "date";
-            else if (type.ToString() == "System.Int32")
-                return "integer";
-            else if (type.ToString() == "System.Single")
-                return "real";
-            else if (type.ToString() == "System.Double")
-                return "real";
-            else
-                return "char(50)";
-        }
-
-        /// <summary>Create a prepared insert query</summary>
-        /// <param name="connection">The SQLite connection to write to</param>
-        /// <param name="columnNames">Column names</param>
-        private IntPtr CreateInsertQuery(SQLite connection, List<string> columnNames)
-        {
-            StringBuilder sql = new StringBuilder();
-            sql.Append("INSERT INTO ");
-            sql.Append(Name);
-            sql.Append('(');
-
-            for (int i = 0; i < columnNames.Count; i++)
-            {
-                if (i > 0)
-                    sql.Append(',');
-                sql.Append('[');
-                sql.Append(columnNames[i]);
-                sql.Append(']');
-            }
-            sql.Append(") VALUES (");
-
-            for (int i = 0; i < columnNames.Count; i++)
-            {
-                if (i > 0)
-                    sql.Append(',');
-                sql.Append('?');
-            }
-
-            sql.Append(')');
-            return connection.Prepare(sql.ToString());
-        }
-
         /// <summary>
         /// 'Flatten' the row passed in, into a list of columns ready to be added
         /// to a data table.
         /// </summary>
-        public static void Flatten(ref IEnumerable<string> columnNames, ref IEnumerable<string> columnUnits, ref IEnumerable<object> columnValues)
+        private static void Flatten(ref IEnumerable<string> columnNames, ref IEnumerable<string> columnUnits, ref IEnumerable<object> columnValues)
         {
             List<string> newColumnNames = new List<string>();
             List<string> newColumnUnits = new List<string>();
@@ -427,5 +396,37 @@ namespace Models.Storage
             }
         }
 
+        /// <summary>
+        /// Get the simulation ID for the specified row.
+        /// </summary>
+        /// <param name="values">The row values</param>
+        /// <param name="columnName">The column name to look for</param>
+        /// <returns>Returns ID or 0 if not found</returns>
+        private int GetValueFromRow(object[] values, string columnName)
+        {
+            int indexSimulationID = Columns.FindIndex(column => column.Name == columnName);
+            if (indexSimulationID != -1 && values[indexSimulationID] != null)
+                return (int)values[indexSimulationID];
+            return 0;
+        }
+
+        /// <summary>
+        /// Get all simulation IDs for the specified rows.
+        /// </summary>
+        /// <param name="values">The row values</param>
+        /// <param name="columnName">The column name to look for</param>
+        /// <returns>Returns ID or 0 if not found</returns>
+        private IEnumerable<int> GetValuesFromRows(List<object[]> values, string columnName)
+        {
+            SortedSet<int> ids = new SortedSet<int>();
+            int indexSimulationID = Columns.FindIndex(column => column.Name == columnName);
+            if (indexSimulationID != -1)
+            {
+                foreach (object[] rowValues in values)
+                    if (rowValues[indexSimulationID] != null)
+                        ids.Add((int)rowValues[indexSimulationID]);
+            }
+            return ids;
+        }
     }
 }

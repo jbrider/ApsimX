@@ -23,8 +23,9 @@ namespace Models.Graph
     [ValidParent(ParentType = typeof(Simulation))]
     [ValidParent(ParentType = typeof(Zone))]
     [ValidParent(ParentType = typeof(Factorial.Experiment))]
+    [ValidParent(ParentType = typeof(Morris))]
     [ValidParent(ParentType = typeof(Folder))]
-    public class Graph : Model, AutoDocumentation.ITag
+    public class Graph : Model, AutoDocumentation.ITag, ICustomDocumentation
     {
         /// <summary>The data tables on the graph.</summary>
         [NonSerialized]
@@ -114,7 +115,7 @@ namespace Models.Graph
         /// <param name="tags">The list of tags to add to.</param>
         /// <param name="headingLevel">The level (e.g. H2) of the headings.</param>
         /// <param name="indent">The level of indentation 1, 2, 3 etc.</param>
-        public override void Document(List<AutoDocumentation.ITag> tags, int headingLevel, int indent)
+        public void Document(List<AutoDocumentation.ITag> tags, int headingLevel, int indent)
         {
             if (IncludeInDocumentation)
                 tags.Add(this);

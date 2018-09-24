@@ -44,12 +44,14 @@
         private Stopwatch timer;
 
         /// <summary>Constructor</summary>
+        /// <param name="simEngine">Simulation engine</param>
         /// <param name="simulation">The simulation to clone and run.</param>
         /// <param name="doClone">Clone the simulation before running?</param>
-        public RunSimulation(Simulation simulation, bool doClone)
+        public RunSimulation(ISimulationEngine simEngine, Simulation simulation, bool doClone)
         {
             simulationToRun = simulation;
             cloneSimulationBeforeRun = doClone;
+            simulationEngine = simEngine;
         }
 
         /// <summary>
@@ -88,13 +90,17 @@
                 if (cloneSimulationBeforeRun)
                 {
                     simulationToRun = Apsim.Clone(simulationToRun) as Simulation;
-                    events = new Events(simulationToRun);
-                    simulationEngine.MakeSubstitutions(simulationToRun);
-                    LoadedEventArgs loadedArgs = new LoadedEventArgs();
-                    events.Publish("Loaded", new object[] { simulationToRun, loadedArgs });
+                    simulationEngine.MakeSubsAndLoad(simulationToRun);
                 }
                 else
                     events = new Events(simulationToRun);
+
+                // Remove disabled models from simulation
+                foreach (IModel model in Apsim.ChildrenRecursively(simulationToRun))
+                {
+                    if (!model.Enabled)
+                        model.Parent.Children.Remove(model as Model);
+                }
 
                 // Get an event and links service
                 if (simulationEngine != null)
@@ -103,7 +109,7 @@
                     links = new Core.Links(Services);
 
                 // Resolve links and events.
-                links.Resolve(simulationToRun);
+                links.Resolve(simulationToRun, allLinks:true);
                 events.ConnectEvents();
 
                 simulationToRun.ClearCaches();
@@ -119,15 +125,15 @@
                 string errorMessage = "ERROR in file: " + fileName + "\r\n" +
                                       "Simulation name: " + simulationToRun.Name + "\r\n";
                 if (err.InnerException == null)
-                    errorMessage += err.ToString();
+                    errorMessage += err.Message;
                 else
-                    errorMessage += err.InnerException.ToString();
-
+                    errorMessage += err.InnerException.Message;
+                
                 ISummary summary = Apsim.Find(simulationToRun, typeof(Summary)) as ISummary;
                 if (summary != null)
                     summary.WriteMessage(simulationToRun, errorMessage);
-
-                throw new Exception(errorMessage);
+                
+                throw new Exception(errorMessage, err);
             }
             finally
             {
@@ -136,7 +142,7 @@
                 // Cleanup the simulation
                 if (events != null)
                     events.DisconnectEvents();
-                links.Unresolve(simulationToRun);
+                links.Unresolve(simulationToRun, allLinks:true);
 
                 timer.Stop();
                 Console.WriteLine("File: " + Path.GetFileNameWithoutExtension(fileName) +

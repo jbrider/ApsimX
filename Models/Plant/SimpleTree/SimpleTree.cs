@@ -12,13 +12,14 @@ using APSIM.Shared.Utilities;
 namespace Models.PMF
 {
     /// <summary>
+    /// # [Name]
     /// A model of a simple tree
     /// </summary>
     [Serializable]
     [ViewName("UserInterface.Views.GridView")]
     [PresenterName("UserInterface.Presenters.PropertyPresenter")]
     [ValidParent(ParentType = typeof(Zone))]
-    public class SimpleTree : Model, ICrop, ICanopy, IUptake
+    public class SimpleTree : Model, IPlant, ICanopy, IUptake
     {
         #region Canopy interface
 
@@ -66,6 +67,12 @@ namespace Models.PMF
         /// </summary>
         public string CropType { get; set; }
 
+        /// <summary>Gets a value indicating how leguminous a plant is</summary>
+        public double Legumosity { get { return 0; } }
+
+        /// <summary>Gets a value indicating whether the biomass is from a c4 plant or not</summary>
+        public bool IsC4 { get { return false; } }
+
         /// <summary>Albedo.</summary>
         public double Albedo { get { return 0.15; } }
 
@@ -112,6 +119,8 @@ namespace Models.PMF
         [Units("kg/ha")]
         public double NDemand { get; set; }
 
+        /// <summary>Aboveground mass</summary>
+        public Biomass AboveGround { get { return new Biomass(); } }
 
         /// <summary>The plant_status</summary>
         [XmlIgnore]
@@ -173,7 +182,7 @@ namespace Models.PMF
         /// <param name="soilstate"></param>
         /// <returns>list of uptakes</returns>
         /// <exception cref="ApsimXException">Could not find root zone in Zone  + this.Parent.Name +  for SimpleTree</exception>
-        public List<ZoneWaterAndN> GetSWUptakes(SoilState soilstate)
+        public List<ZoneWaterAndN> GetWaterUptakeEstimates(SoilState soilstate)
         {
             ZoneWaterAndN MyZone = new ZoneWaterAndN(this.Parent as Zone);
             foreach (ZoneWaterAndN Z in soilstate.Zones)
@@ -207,7 +216,7 @@ namespace Models.PMF
         /// <summary>Placeholder for SoilArbitrator</summary>
         /// <param name="soilstate">soil state</param>
         /// <returns></returns>
-        public List<ZoneWaterAndN> GetNUptakes(SoilState soilstate)
+        public List<ZoneWaterAndN> GetNitrogenUptakeEstimates(SoilState soilstate)
         {
             ZoneWaterAndN MyZone = new ZoneWaterAndN(this.Parent as Zone);
             foreach (ZoneWaterAndN Z in soilstate.Zones)
@@ -243,24 +252,23 @@ namespace Models.PMF
         /// <summary>
         /// Set the sw uptake for today
         /// </summary>
-        public void SetSWUptake(List<ZoneWaterAndN> info)
+        public void SetActualWaterUptake(List<ZoneWaterAndN> info)
         {
             SWUptake = info[0].Water;
             EP = MathUtilities.Sum(SWUptake);
 
-            for (int j = 0; j < Soil.LL15mm.Length; j++)
-                Soil.SoilWater.SetSWmm(j, Soil.SoilWater.SWmm[j] - SWUptake[j]);
+            Soil.SoilWater.RemoveWater(SWUptake);
         }
         /// <summary>
         /// Set the n uptake for today
         /// </summary>
-        public void SetNUptake(List<ZoneWaterAndN> info)
+        public void SetActualNitrogenUptakes(List<ZoneWaterAndN> info)
         {
             NO3Uptake = info[0].NO3N;
             NH4Uptake = info[0].NH4N;
 
-            solutes.Subtract("NO3", NO3Uptake);
-            solutes.Subtract("NH4", NH4Uptake);
+            solutes.Subtract("NO3", SoluteManager.SoluteSetterType.Plant, NO3Uptake);
+            solutes.Subtract("NH4", SoluteManager.SoluteSetterType.Plant, NH4Uptake);
         }
 
 
@@ -276,6 +284,16 @@ namespace Models.PMF
         {
 
         }
+
+        /// <summary>
+        /// Biomass has been removed from the plant.
+        /// </summary>
+        /// <param name="fractionRemoved">The fraction of biomass removed</param>
+        public void BiomassRemovalComplete(double fractionRemoved)
+        {
+
+        }
+
         /// <summary>Roots the proportion.</summary>
         /// <param name="layer">The layer.</param>
         /// <param name="root_depth">The root_depth.</param>

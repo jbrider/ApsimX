@@ -20,6 +20,7 @@ using Models.PostSimulationTools;
 using PdfSharp.Fonts;
 using System.Data;
 using PdfSharp.Drawing;
+using Models.Interfaces;
 
 namespace UserInterface.Commands
 {
@@ -35,6 +36,9 @@ namespace UserInterface.Commands
 
         /// <summary>A list of all citations found.</summary>
         private List<BibTeX.Citation> citations;
+
+        /// <summary>Temporary working directory.</summary>
+        private string workingDirectory;
 
         /// <summary>Gets the name of the file .</summary>
         public string FileNameWritten { get; private set; }
@@ -124,7 +128,7 @@ namespace UserInterface.Commands
                GlobalFontSettings.FontResolver = new MyFontResolver();
 
             // Create a temporary working directory.
-            string workingDirectory = Path.Combine(Path.GetTempPath(), "autodoc");
+            workingDirectory = Path.Combine(Path.GetTempPath(), "autodoc");
             if (Directory.Exists(workingDirectory))
                 Directory.Delete(workingDirectory, true);
             Directory.CreateDirectory(workingDirectory);
@@ -144,11 +148,14 @@ namespace UserInterface.Commands
             }
             section.AddImage(png1);
 
+            Paragraph version = new Paragraph();
+            version.AddText(ExplorerPresenter.ApsimXFile.ApsimVersion);
+            section.Add(version);
             // Convert all models in file to tags.
             List<AutoDocumentation.ITag> tags = new List<AutoDocumentation.ITag>();
             foreach (IModel child in ExplorerPresenter.ApsimXFile.Children)
             {
-                child.Document(tags, headingLevel:1, indent:1);
+                AutoDocumentation.DocumentModel(child, tags, headingLevel:1, indent:0);
                 if (child.Name == "TitlePage")
                 {
                     AddBackground(tags);
@@ -240,16 +247,10 @@ namespace UserInterface.Commands
                         while (Gtk.Application.EventsPending())
                             Gtk.Application.RunIteration();
                         if (model is Memo)
-                            model.Document(tags, 1, 0);
+                            AutoDocumentation.DocumentModel(model, tags, 1, 0);
                         else
                         {
-                            System.Drawing.Image image = null;
-
-                            if (model is Manager)
-                                image = (examplePresenter.CurrentPresenter as ManagerPresenter).GetScreenshot();
-                            else
-                                image = examplePresenter.GetScreenhotOfRightHandPanel();
-
+                            Image image = examplePresenter.GetScreenhotOfRightHandPanel();
                             if (image != null)
                             {
                                 string name = "Example" + instruction;
@@ -284,7 +285,7 @@ namespace UserInterface.Commands
                           " have described earlier versions of APSIM in detail, outlining the key APSIM crop and soil process models and presented some examples " +
                           " of the capabilities of APSIM." + Environment.NewLine + Environment.NewLine +
 
-                          "![Alt Text](..\\..\\Documentation\\Images\\Jigsaw.jpg)" + Environment.NewLine + Environment.NewLine +
+                          "![Alt Text](Jigsaw.jpg)" + Environment.NewLine + Environment.NewLine +
                           "**Figure [FigureNumber]:**  This conceptual representation of an APSIM simulation shows a “top level” farm (with climate, farm management and livestock) " +
                           "and two fields. The farm and each field are built from a combination of models found in the toolbox. The APSIM infrastructure connects all selected model pieces together to form a coherent simulation.*" + Environment.NewLine + Environment.NewLine +
 
@@ -300,7 +301,7 @@ namespace UserInterface.Commands
 
                           "APSIM is freely available for non-commercial purposes. Non-commercial use of APSIM means public-good research & development and educational activities. " +
                           "It includes the support of policy development and/or implementation by, or on behalf of, government bodies and industry-good work where the research outcomes " +
-                          "are to be made publicly available. For more information visit <a href=\"http://www.apsim.info/Products/Licensing.aspx\">the licensing page on the APSIM web site</a>";
+                          "are to be made publicly available. For more information visit <a href=\"https://www.apsim.info/Products/Licensing.aspx\">the licensing page on the APSIM web site</a>";
 
             tags.Add(new AutoDocumentation.Heading("APSIM Description", 1));
             tags.Add(new AutoDocumentation.Paragraph(text, 0));
@@ -575,9 +576,6 @@ namespace UserInterface.Commands
                     AutoDocumentation.Heading heading = tag as AutoDocumentation.Heading;
                     if (heading.headingLevel > 0 && heading.headingLevel <= 6)
                     {
-                        //if (heading.headingLevel == 1)
-                        //    section.AddPageBreak();
-
                         Paragraph para = section.AddParagraph(heading.text, "Heading" + heading.headingLevel);
                         if (heading.headingLevel == 1)
                             para.Format.OutlineLevel = OutlineLevel.Level1;
@@ -627,7 +625,7 @@ namespace UserInterface.Commands
                     graphView.Width = 500;
                     graphView.Height = 500;
                     graphPresenter.Attach(tag, graphView, ExplorerPresenter);
-                    string PNGFileName = graphPresenter.ExportToPDF(workingDirectory);
+                    string PNGFileName = graphPresenter.ExportToPNG(workingDirectory);
                     section.AddImage(PNGFileName);
                     string caption = (tag as Graph).Caption;
                     if (caption != null)
@@ -640,9 +638,9 @@ namespace UserInterface.Commands
                     MapPresenter mapPresenter = new MapPresenter();
                     MapView mapView = new MapView(null);
                     mapPresenter.Attach(tag, mapView, ExplorerPresenter);
-                    string PNGFileName = mapPresenter.ExportToPDF(workingDirectory);
+                    string PNGFileName = mapPresenter.ExportToPNG(workingDirectory);
                     if (!String.IsNullOrEmpty(PNGFileName))
-                       section.AddImage(PNGFileName);
+                        section.AddImage(PNGFileName);
                     mapPresenter.Detach();
                     mapView.MainWidget.Destroy();
                 }
@@ -656,6 +654,45 @@ namespace UserInterface.Commands
                     section.AddImage(PNGFileName);
                     figureNumber++;
                 }
+                else if (tag is AutoDocumentation.ModelView)
+                {
+                    AutoDocumentation.ModelView modelView = tag as AutoDocumentation.ModelView;
+                    ViewNameAttribute viewName = ReflectionUtilities.GetAttribute(modelView.model.GetType(), typeof(ViewNameAttribute), false) as ViewNameAttribute;
+                    PresenterNameAttribute presenterName = ReflectionUtilities.GetAttribute(modelView.model.GetType(), typeof(PresenterNameAttribute), false) as PresenterNameAttribute;
+                    if (viewName != null && presenterName != null)
+                    {
+                        ViewBase view = Assembly.GetExecutingAssembly().CreateInstance(viewName.ToString(), false, BindingFlags.Default, null, new object[] { null }, null, null) as ViewBase;
+                        IPresenter presenter = Assembly.GetExecutingAssembly().CreateInstance(presenterName.ToString()) as IPresenter;
+
+                        if (view != null && presenter != null)
+                        {
+                            ExplorerPresenter.ApsimXFile.Links.Resolve(presenter);
+                            presenter.Attach(modelView.model, view, ExplorerPresenter);
+
+                            Gtk.Window popupWin;
+                            if (view is MapView)
+                            {
+                                popupWin = (view as MapView).GetPopupWin();
+                                popupWin.SetSizeRequest(515, 500);
+                            }
+                            else
+                            {
+                                popupWin = new Gtk.Window(Gtk.WindowType.Popup);
+                                popupWin.SetSizeRequest(800, 800);
+                                popupWin.Add(view.MainWidget);
+                            }
+                            popupWin.ShowAll();
+                            while (Gtk.Application.EventsPending())
+                                Gtk.Application.RunIteration();
+
+                            string PNGFileName = (presenter as IExportable).ExportToPNG(workingDirectory);
+                            section.AddImage(PNGFileName);
+                            presenter.Detach();
+                            view.MainWidget.Destroy();
+                            popupWin.Destroy();
+                        }
+                    }
+                }
             }
         }
 
@@ -668,11 +705,10 @@ namespace UserInterface.Commands
             markDown.ExtraMode = true;
             string html = markDown.Transform(paragraph.text);
 
-            string imageDirectory = Path.GetDirectoryName(ExplorerPresenter.ApsimXFile.FileName);
-            HtmlToMigraDoc.Convert(html, section, imageDirectory);
+            HtmlToMigraDoc.Convert(html, section, workingDirectory);
 
             Paragraph para = section.LastParagraph;
-            para.Format.LeftIndent = Unit.FromCentimeter(paragraph.indent);
+            para.Format.LeftIndent += Unit.FromCentimeter(paragraph.indent);
             if (paragraph.bookmarkName != null)
                 para.AddBookmark(paragraph.bookmarkName);
             if (paragraph.handingIndent)
@@ -874,6 +910,19 @@ namespace UserInterface.Commands
                 stream.Read(data, 0, count);
                 return data;
             }
+        }
+    }
+
+
+    /// <summary>A simple container for holding a directed graph - used in auto-doc</summary>
+    public class DirectedGraphContainer : IVisualiseAsDirectedGraph
+    {
+        /// <summary>A property for holding the graph</summary>
+        public DirectedGraph DirectedGraphInfo { get; set; }
+
+        public DirectedGraphContainer(DirectedGraph graph)
+        {
+            DirectedGraphInfo = graph;
         }
     }
 }

@@ -42,6 +42,7 @@ namespace Models.Soils
             /// <summary>
             /// kilograms per hectare
             /// </summary>
+            [Description("kg/ha")]
             kgha
         }
 
@@ -74,12 +75,14 @@ namespace Models.Soils
             /// <summary>
             /// Organic carbon as total percent
             /// </summary>
+            [Description("Total %")]
             Total,
 
             /// <summary>
             /// Organic carbon as walkley black percent
             /// </summary>
             [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed.")]
+            [Description("Walkley Black %")]
             WalkleyBlack
         }
 
@@ -91,11 +94,13 @@ namespace Models.Soils
             /// <summary>
             /// PH as water method
             /// </summary>
+            [Description("1:5 water")]
             Water,
 
             /// <summary>
             /// PH as Calcium chloride method
             /// </summary>
+            [Description("CaCl2")]
             CaCl2
         }
         #endregion
@@ -505,7 +510,7 @@ namespace Models.Soils
         {
             get
             {
-                if (this.OCUnits == OCSampleUnitsEnum.WalkleyBlack)
+                if (this.OCUnits == OCSampleUnitsEnum.WalkleyBlack && OC != null)
                 {
                     return MathUtilities.Multiply_Value(this.OC, 1.3);
                 }
@@ -523,7 +528,7 @@ namespace Models.Soils
         {
             get
             {
-                if (this.OCUnits == OCSampleUnitsEnum.Total)
+                if (this.OCUnits == OCSampleUnitsEnum.Total && OC != null)
                 {
                     return MathUtilities.Divide_Value(this.OC, 1.3);
                 }
@@ -541,7 +546,7 @@ namespace Models.Soils
         {
             get
             {
-                if (this.PHUnits == PHSampleUnitsEnum.CaCl2)
+                if (this.PHUnits == PHSampleUnitsEnum.CaCl2 && PH != null)
                 {
                     // pH in water = (pH in CaCl X 1.1045) - 0.1375
                     return MathUtilities.Subtract_Value(MathUtilities.Multiply_Value(this.PH, 1.1045), 0.1375);
@@ -560,7 +565,7 @@ namespace Models.Soils
         {
             get
             {
-                if (this.PHUnits == PHSampleUnitsEnum.Water)
+                if (this.PHUnits == PHSampleUnitsEnum.Water && PH != null)
                 {
                     // pH in CaCl = (pH in water + 0.1375) / 1.1045
                     return MathUtilities.Divide_Value(MathUtilities.AddValue(PH, 0.1375), 1.1045);

@@ -24,6 +24,9 @@ namespace UserInterface.Presenters
         /// <summary>The parent explorer presenter</summary>
         private ExplorerPresenter explorerPresenter;
 
+        /// <summary>The intellisense object.</summary>
+        private IntellisensePresenter intellisense;
+
         /// <summary>Attach the cultivar model to the cultivar view</summary>
         /// <param name="model">The mode</param>
         /// <param name="view">The view</param>
@@ -35,6 +38,8 @@ namespace UserInterface.Presenters
             this.explorerPresenter = explorerPresenter;
 
             this.view.Lines = this.cultivar.Commands;
+            intellisense = new IntellisensePresenter(this.view as ViewBase);
+            intellisense.ItemSelected += (sender, e) => this.view.InsertCompletionOption(e.ItemSelected, e.TriggerWord);
 
             this.view.LeaveEditor += this.OnCommandsChanged;
             this.view.ContextItemsNeeded += this.OnContextItemsNeeded;
@@ -48,6 +53,7 @@ namespace UserInterface.Presenters
             this.view.LeaveEditor -= this.OnCommandsChanged;
             this.view.ContextItemsNeeded -= this.OnContextItemsNeeded;
             this.explorerPresenter.CommandHistory.ModelChanged -= this.OnModelChanged;
+            intellisense.Cleanup();
         }
 
         /// <summary>The user has changed the commands</summary>
@@ -55,14 +61,21 @@ namespace UserInterface.Presenters
         /// <param name="e">Event arguments</param>
         private void OnCommandsChanged(object sender, EventArgs e)
         {
-            if (this.view.Lines != this.cultivar.Commands)
+            try
             {
-                this.explorerPresenter.CommandHistory.ModelChanged -= this.OnModelChanged;
+                if (this.view.Lines != this.cultivar.Commands)
+                {
+                    this.explorerPresenter.CommandHistory.ModelChanged -= this.OnModelChanged;
 
-                Commands.ChangeProperty command = new Commands.ChangeProperty(this.cultivar, "Commands", this.view.Lines);
-                this.explorerPresenter.CommandHistory.Add(command);
+                    Commands.ChangeProperty command = new Commands.ChangeProperty(this.cultivar, "Commands", this.view.Lines);
+                    this.explorerPresenter.CommandHistory.Add(command);
 
-                this.explorerPresenter.CommandHistory.ModelChanged += this.OnModelChanged;
+                    this.explorerPresenter.CommandHistory.ModelChanged += this.OnModelChanged;
+                }
+            }
+            catch (Exception err)
+            {
+                explorerPresenter.MainPresenter.ShowError(err);
             }
         }
 
@@ -71,7 +84,16 @@ namespace UserInterface.Presenters
         /// <param name="e">Event arguments</param>
         private void OnContextItemsNeeded(object sender, NeedContextItemsArgs e)
         {
-            e.AllItems.AddRange(NeedContextItemsArgs.ExamineModelForNames(this.cultivar, e.ObjectName, true, true, false));
+            try
+            {
+                if (intellisense.GenerateGridCompletions(e.Code, e.Offset, cultivar, true, false, false, e.ControlSpace))
+                    intellisense.Show(e.Coordinates.Item1, e.Coordinates.Item2);
+            }
+            catch (Exception err)
+            {
+                explorerPresenter.MainPresenter.ShowError(err);
+            }
+            
         }
 
         /// <summary>The cultivar model has changed probably because of an undo.</summary>

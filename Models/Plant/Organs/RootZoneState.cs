@@ -1,6 +1,7 @@
 ﻿using Models.Soils;
 using Models.Core;
 using System;
+using Models.Functions;
 
 namespace Models.PMF.Organs
 {
@@ -20,11 +21,20 @@ namespace Models.PMF.Organs
         /// <summary>The root organ</summary>
         private  Root root = null;
 
+        /// <summary>The root front velocity function</summary>
+        private IFunction rootFrontVelocity;
+
+        /// <summary>The Maximum Root Depth</summary>
+        private IFunction maximumRootDepth = null;
+
+        /// <summary>The cost for remobilisation</summary>
+        private IFunction remobilisationCost = null;
+
         /// <summary>Zone name</summary>
         public string Name = null;
 
-        /// <summary>The uptake</summary>
-        public double[] Uptake { get; set; }
+        /// <summary>The water uptake</summary>
+        public double[] WaterUptake { get; set; }
 
         /// <summary>The delta n h4</summary>
         public double[] DeltaNH4 { get; set; }
@@ -35,6 +45,10 @@ namespace Models.PMF.Organs
         /// <summary>Holds actual DM allocations to use in allocating N to structural and Non-Structural pools</summary>
         [Units("g/2")]
         public double[] DMAllocated { get; set; }
+
+        /// <summary>Holds potential DM allocations to use in allocating N to structural and Non-Structural pools</summary>
+        [Units("g/2")]
+        public double[] PotentialDMAllocated { get; set; }
 
         /// <summary>Demand for structural N, set when Ndemand is called and used again in N allocation</summary>
         [Units("g/2")]
@@ -71,11 +85,20 @@ namespace Models.PMF.Organs
         /// <param name="initialDM">Initial dry matter</param>
         /// <param name="population">plant population</param>
         /// <param name="maxNConc">maximum n concentration</param>
-        public ZoneState(Plant Plant, Root Root, Soil soil, double depth, double initialDM, double population, double maxNConc)
+        /// <param name="rfv">Root front velocity</param>
+        /// <param name="mrd">Maximum root depth</param>
+        /// <param name="remobCost">Remobilisation cost</param>
+        public ZoneState(Plant Plant, Root Root, Soil soil, double depth, 
+                         double initialDM, double population, double maxNConc,
+                         IFunction rfv, IFunction mrd, IFunction remobCost)
         {
             this.soil = soil;
             this.plant = Plant;
             this.root = Root;
+            this.rootFrontVelocity = rfv;
+            this.maximumRootDepth = mrd;
+            this.remobilisationCost = remobCost;
+
             Clear();
             Zone zone = Apsim.Parent(soil, typeof(Zone)) as Zone;
             if (zone == null)
@@ -95,29 +118,23 @@ namespace Models.PMF.Organs
         public void Initialise(double depth, double initialDM, double population, double maxNConc)
         {
             Depth = depth;
-            double AccumulatedDepth = 0;
-            double InitialLayers = 0;
+            //distribute root biomass evenly through root depth
+            double[] fromLayer = new double[1] { depth };
+            double[] fromMass = new double[1] { initialDM };
+            double[] toMass = soil.Map(fromMass, fromLayer, soil.Thickness, Soil.MapType.Mass, 0.0);
+
             for (int layer = 0; layer < soil.Thickness.Length; layer++)
             {
-                if (AccumulatedDepth < Depth)
-                    InitialLayers += 1;
-                AccumulatedDepth += soil.Thickness[layer];
-            }
-            for (int layer = 0; layer < soil.Thickness.Length; layer++)
-            {
-                if (layer <= InitialLayers - 1)
-                {
-                    //distribute root biomass evenly through root depth
-                    LayerLive[layer].StructuralWt = initialDM / InitialLayers * population;
-                    LayerLive[layer].StructuralN = initialDM / InitialLayers * maxNConc * population;
-                }
+                LayerLive[layer].StructuralWt = toMass[layer] * population;
+                LayerLive[layer].StructuralN = LayerLive[layer].StructuralWt * maxNConc;
             }
         }
+
 
         /// <summary>Clears this instance.</summary>
         public void Clear()
         {
-            Uptake = null;
+            WaterUptake = null;
             NitUptake = null;
             DeltaNO3 = new double[soil.Thickness.Length];
             DeltaNH4 = new double[soil.Thickness.Length];
@@ -154,9 +171,9 @@ namespace Models.PMF.Organs
             //SoilCrop crop = soil.Crop(plant.Name) as SoilCrop;
             double[] xf = soil.XF(plant.Name);
             if (soil.Weirdo == null)
-                Depth = Depth + root.RootFrontVelocity.Value(RootLayer) * xf[RootLayer];
+                Depth = Depth + rootFrontVelocity.Value(RootLayer) * xf[RootLayer];
             else
-                Depth = Depth + root.RootFrontVelocity.Value(RootLayer);
+                Depth = Depth + rootFrontVelocity.Value(RootLayer);
 
 
             // Limit root depth for impeded layers
@@ -172,7 +189,7 @@ namespace Models.PMF.Organs
                     MaxDepth += soil.Thickness[i];
             }
             // Limit root depth for the crop specific maximum depth
-            MaxDepth = Math.Min(root.MaximumRootDepth.Value(), MaxDepth);
+            MaxDepth = Math.Min(maximumRootDepth.Value(), MaxDepth);
 
             Depth = Math.Min(Depth, MaxDepth);
 
@@ -188,7 +205,7 @@ namespace Models.PMF.Organs
                 if (layer <= Soil.LayerIndexOfDepth(Depth, soil.Thickness))
                     if (LayerLive[layer].Wt > 0)
                     {
-                        RAw[layer] = Uptake[layer] / LayerLive[layer].Wt
+                        RAw[layer] = - WaterUptake[layer] / LayerLive[layer].Wt
                                    * soil.Thickness[layer]
                                    * Soil.ProportionThroughLayer(layer, Depth, soil.Thickness);
                         RAw[layer] = Math.Max(RAw[layer], 1e-20);  // Make sure small numbers to avoid lack of info for partitioning

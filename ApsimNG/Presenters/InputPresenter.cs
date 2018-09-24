@@ -67,11 +67,11 @@ namespace UserInterface.Presenters
         {
             try
             {
-                this.explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(this.input, "FullFileName", e.FileName));
+                explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(input, "FullFileName", e.FileName));
             }
             catch (Exception err)
             {
-                this.explorerPresenter.MainPresenter.ShowMessage(err.Message, Simulation.ErrorLevel.Error);
+                explorerPresenter.MainPresenter.ShowError(err);
             }
         }
 

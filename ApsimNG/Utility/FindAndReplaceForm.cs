@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Gtk;
 using Mono.TextEditor;
 using Cairo;
-using UserInterface;
+using UserInterface.Views;
 
 namespace Utility
 {
@@ -27,7 +27,7 @@ namespace Utility
 
         public FindAndReplaceForm()
         {
-            Builder builder = ViewBase.BuilderFromResource("ApsimNG.Resources.Glade.FindAndReplace.glade");
+            Builder builder = ViewBase.MasterView.BuilderFromResource("ApsimNG.Resources.Glade.FindAndReplace.glade");
             window1 = (Window)builder.GetObject("window1");
             chkMatchCase = (CheckButton)builder.GetObject("chkMatchCase");
             chkMatchWholeWord = (CheckButton)builder.GetObject("chkMatchWholeWord");
@@ -49,6 +49,9 @@ namespace Utility
             btnHighlightAll.Clicked += btnHighlightAll_Click;
             window1.DeleteEvent += Window1_DeleteEvent;
             window1.Destroyed += Window1_Destroyed;
+            AccelGroup agr = new AccelGroup();
+            btnCancel.AddAccelerator("activate", agr, new AccelKey(Gdk.Key.Escape, Gdk.ModifierType.None, AccelFlags.Visible));
+            window1.AddAccelGroup(agr);
         }
 
 
@@ -74,8 +77,8 @@ namespace Utility
             args.RetVal = true;
         }
 
-        MonoTextEditor _editor;
-        MonoTextEditor Editor
+        TextEditor _editor;
+        TextEditor Editor
         {
             get { return _editor; }
             set
@@ -104,7 +107,7 @@ namespace Utility
             window1.Title = text;
         }
 
-        public void ShowFor(MonoTextEditor editor, bool replaceMode)
+        public void ShowFor(TextEditor editor, bool replaceMode)
         {
             Editor = editor;
             this.selectionOnly = false;
@@ -133,6 +136,7 @@ namespace Utility
 
             window1.Parent = editor.Toplevel;
             UpdateTitleBar();
+            window1.WindowPosition = WindowPosition.CenterOnParent;
             window1.Show();
             txtLookFor.GrabFocus();
         }

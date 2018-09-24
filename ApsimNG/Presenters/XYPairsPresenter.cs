@@ -14,28 +14,23 @@ namespace UserInterface.Presenters
     using Interfaces;
     using Models.Core;
     using Models.Graph;
-    using Models.PMF.Functions;
+    using Models.Functions;
     using Views;
 
     /// <summary>
     /// The presenter class for populating an InitialWater view with an InitialWater model.
     /// </summary>
-    public class XYPairsPresenter : IPresenter
+    public class XYPairsPresenter : GridPresenter, IPresenter
     {
         /// <summary>
         /// The XYPairs model.
         /// </summary>
-        private XYPairs xyPairs;
+        private XYPairs xYPairs;
 
         /// <summary>
         /// The initial XYPairs view;
         /// </summary>
-        private XYPairsView xyPairsView;
-
-        /// <summary>
-        /// The parent explorer presenter.
-        /// </summary>
-        private ExplorerPresenter explorerPresenter;
+        private XYPairsView xYPairsView;
 
         /// <summary>
         /// A reference to the 'graphPresenter' responsible for our graph.
@@ -58,51 +53,52 @@ namespace UserInterface.Presenters
         /// <param name="model">The initial water model</param>
         /// <param name="view">The initial water view</param>
         /// <param name="explorerPresenter">The parent explorer presenter</param>
-        public void Attach(object model, object view, ExplorerPresenter explorerPresenter)
+        public override void Attach(object model, object view, ExplorerPresenter explorerPresenter)
         {
-            this.xyPairs = model as XYPairs;
-            this.xyPairsView = view as XYPairsView;
-            this.explorerPresenter = explorerPresenter as ExplorerPresenter;
-
+            this.xYPairs = model as XYPairs;
+            this.xYPairsView = view as XYPairsView;
+            this.presenter = explorerPresenter as ExplorerPresenter;
+            base.Attach(model, xYPairsView.VariablesGrid, explorerPresenter);
             // Create a list of profile (array) properties. PpoulateView wil create a table from them and 
             // hand the table to the variables grid.
-            this.FindAllProperties(this.xyPairs);
+            this.FindAllProperties(this.xYPairs);
 
             this.PopulateView();
 
-            this.explorerPresenter.CommandHistory.ModelChanged += OnModelChanged;
+            this.presenter.CommandHistory.ModelChanged += OnModelChanged;
 
             // Populate the graph.
             this.graph = Utility.Graph.CreateGraphFromResource(model.GetType().Name + "Graph");
-            this.xyPairs.Children.Add(this.graph);
-            this.graph.Parent = this.xyPairs;
+            this.xYPairs.Children.Add(this.graph);
+            this.graph.Parent = this.xYPairs;
             (this.graph.Series[0] as Series).XFieldName = Apsim.FullPath(graph.Parent) + ".X";
             (this.graph.Series[0] as Series).YFieldName = Apsim.FullPath(graph.Parent) + ".Y";
             this.graphPresenter = new GraphPresenter();
-            this.graphPresenter.Attach(this.graph, this.xyPairsView.Graph, this.explorerPresenter);
+            this.graphPresenter.Attach(this.graph, this.xYPairsView.Graph, this.presenter);
             string xAxisTitle = LookForXAxisTitle();
             if (xAxisTitle != null)
             {
-                xyPairsView.Graph.FormatAxis(Axis.AxisType.Bottom, xAxisTitle, false, double.NaN, double.NaN, double.NaN);
+                xYPairsView.Graph.FormatAxis(Axis.AxisType.Bottom, xAxisTitle, false, double.NaN, double.NaN, double.NaN);
             }
 
             string yAxisTitle = LookForYAxisTitle();
             if (yAxisTitle != null)
             {
-                xyPairsView.Graph.FormatAxis(Axis.AxisType.Left, yAxisTitle, false, double.NaN, double.NaN, double.NaN);
+                xYPairsView.Graph.FormatAxis(Axis.AxisType.Left, yAxisTitle, false, double.NaN, double.NaN, double.NaN);
             }
 
-            xyPairsView.Graph.FormatTitle(xyPairs.Parent.Name);
+            xYPairsView.Graph.FormatTitle(xYPairs.Parent.Name);
         }
 
         /// <summary>
         /// Detach the model from the view.
         /// </summary>
-        public void Detach()
+        public override void Detach()
         {
-            this.explorerPresenter.CommandHistory.ModelChanged -= OnModelChanged;
+            base.Detach();
+            this.presenter.CommandHistory.ModelChanged -= OnModelChanged;
             this.DisconnectViewEvents();
-            this.xyPairs.Children.Remove(this.graph);
+            this.xYPairs.Children.Remove(this.graph);
         }
 
         /// <summary>
@@ -129,11 +125,11 @@ namespace UserInterface.Presenters
         private string LookForXAxisTitle()
         {
             // See if parent has an XProperty property
-            PropertyInfo xProperty = xyPairs.Parent.GetType().GetProperty("XProperty");
+            PropertyInfo xProperty = xYPairs.Parent.GetType().GetProperty("XProperty");
             if (xProperty != null)
             {
-                string propertyName = xProperty.GetValue(xyPairs.Parent, null).ToString();
-                IVariable variable = Apsim.GetVariableObject(xyPairs, propertyName);
+                string propertyName = xProperty.GetValue(xYPairs.Parent, null).ToString();
+                IVariable variable = Apsim.GetVariableObject(xYPairs, propertyName);
                 if (variable != null && variable.UnitsLabel != null)
                 {
                     return propertyName + " " + variable.UnitsLabel;
@@ -141,19 +137,19 @@ namespace UserInterface.Presenters
 
                 return propertyName;
             }
-            else if (xyPairs.Parent is AirTemperatureFunction)
+            else if (xYPairs.Parent is AirTemperatureFunction)
             {
                 return "Mean air temperature (oC)";
             }
-            else if (xyPairs.Parent is SoilTemperatureFunction)
+            else if (xYPairs.Parent is SoilTemperatureFunction)
             {
                 return "Mean soil temperature (oC)";
             }
-            else if (xyPairs.Parent is SoilTemperatureWeightedFunction)
+            else if (xYPairs.Parent is SoilTemperatureWeightedFunction)
             {
                 return "Weighted soil temperature (oC)";
             }
-            else if (xyPairs.Parent is WeightedTemperatureFunction)
+            else if (xYPairs.Parent is WeightedTemperatureFunction)
             {
                 return "Weighted air temperature (oC)";
             }
@@ -169,18 +165,18 @@ namespace UserInterface.Presenters
         /// <returns>The axis title</returns>
         private string LookForYAxisTitle()
         {
-            IModel modelContainingLinkField = xyPairs.Parent.Parent;
-            FieldInfo linkField = modelContainingLinkField.GetType().GetField(xyPairs.Parent.Name, BindingFlags.NonPublic | BindingFlags.Instance);
+            IModel modelContainingLinkField = xYPairs.Parent.Parent;
+            FieldInfo linkField = modelContainingLinkField.GetType().GetField(xYPairs.Parent.Name, BindingFlags.NonPublic | BindingFlags.Instance);
             if (linkField != null)
             {
                 UnitsAttribute units = ReflectionUtilities.GetAttribute(linkField, typeof(UnitsAttribute), true) as UnitsAttribute;
                 if (units != null)
                 {
-                    return xyPairs.Parent.Name + " (" + units.ToString() + ")";
+                    return xYPairs.Parent.Name + " (" + units.ToString() + ")";
                 }
             }
 
-            return xyPairs.Parent.Name;
+            return xYPairs.Parent.Name;
         }
 
         /// <summary>
@@ -189,12 +185,12 @@ namespace UserInterface.Presenters
         private void PopulateGrid()
         {
             DataTable table = this.CreateTable();
-            this.xyPairsView.VariablesGrid.DataSource = table;
-            this.xyPairsView.VariablesGrid.RowCount = 100;
+            this.xYPairsView.VariablesGrid.DataSource = table;
+            this.xYPairsView.VariablesGrid.RowCount = 100;
             for (int i = 0; i < table.Columns.Count; i++)
             {
-                this.xyPairsView.VariablesGrid.GetColumn(i).Width = 100;
-                this.xyPairsView.VariablesGrid.GetColumn(i).Width = 100;
+                this.xYPairsView.VariablesGrid.GetColumn(i).Width = 100;
+                this.xYPairsView.VariablesGrid.GetColumn(i).Width = 100;
             }
         }
 
@@ -260,12 +256,10 @@ namespace UserInterface.Presenters
         {
             // Trap the invoking of the ProfileGrid 'CellValueChanged' event so that
             // we can save the contents.
-            this.xyPairsView.VariablesGrid.CellsChanged += this.OnVariablesGridCellValueChanged;
+            this.xYPairsView.VariablesGrid.CellsChanged += this.OnVariablesGridCellValueChanged;
 
             // Trap the model changed event so that we can handle undo.
-            this.explorerPresenter.CommandHistory.ModelChanged += this.OnModelChanged;
-
-            this.xyPairsView.VariablesGrid.ResizeControls();
+            this.presenter.CommandHistory.ModelChanged += this.OnModelChanged;
 
             // this.initialWaterView.OnDepthWetSoilChanged += this.OnDepthWetSoilChanged;
             // this.initialWaterView.OnFilledFromTopChanged += this.OnFilledFromTopChanged;
@@ -279,8 +273,8 @@ namespace UserInterface.Presenters
         /// </summary>
         private void DisconnectViewEvents()
         {
-            this.xyPairsView.VariablesGrid.CellsChanged -= this.OnVariablesGridCellValueChanged;
-            this.explorerPresenter.CommandHistory.ModelChanged -= this.OnModelChanged;
+            this.xYPairsView.VariablesGrid.CellsChanged -= this.OnVariablesGridCellValueChanged;
+            this.presenter.CommandHistory.ModelChanged -= this.OnModelChanged;
         }
 
         /// <summary>
@@ -307,10 +301,10 @@ namespace UserInterface.Presenters
         /// </summary>
         private void SaveGrid()
         {
-            this.explorerPresenter.CommandHistory.ModelChanged -= this.OnModelChanged;
+            this.presenter.CommandHistory.ModelChanged -= this.OnModelChanged;
 
             // Get the data source of the profile grid.
-            DataTable data = this.xyPairsView.VariablesGrid.DataSource;
+            DataTable data = this.xYPairsView.VariablesGrid.DataSource;
 
             // Maintain a list of all property changes that we need to make.
             List<Commands.ChangeProperty.Property> properties = new List<Commands.ChangeProperty.Property>();
@@ -369,10 +363,8 @@ namespace UserInterface.Presenters
                     if (changedValues)
                     {
                         // Store the property change.
-                        Commands.ChangeProperty.Property property = new Commands.ChangeProperty.Property();
-                        property.Name = this.propertiesInGrid[i].Name;
-                        property.Obj = this.propertiesInGrid[i].Object;
-                        property.NewValue = values;
+                        Commands.ChangeProperty.Property property =
+                            new Commands.ChangeProperty.Property(this.propertiesInGrid[i].Object, this.propertiesInGrid[i].Name, values);
                         properties.Add(property);
                     }
                 }
@@ -382,10 +374,10 @@ namespace UserInterface.Presenters
             if (properties.Count > 0)
             {
                 Commands.ChangeProperty command = new Commands.ChangeProperty(properties);
-                this.explorerPresenter.CommandHistory.Add(command);
+                this.presenter.CommandHistory.Add(command);
             }
 
-            this.explorerPresenter.CommandHistory.ModelChanged += this.OnModelChanged;
+            this.presenter.CommandHistory.ModelChanged += this.OnModelChanged;
         }
 
         /// <summary>
@@ -412,7 +404,7 @@ namespace UserInterface.Presenters
                             valueForCell = null;
                         }
 
-                        IGridCell cell = this.xyPairsView.VariablesGrid.GetCell(col, row);
+                        IGridCell cell = this.xYPairsView.VariablesGrid.GetCell(col, row);
                         cell.Value = valueForCell;
 
                         row++;
@@ -430,7 +422,7 @@ namespace UserInterface.Presenters
 
                         columnName = columnName + "\r\n" + total.ToString("N1") + " mm";
 
-                        IGridColumn column = this.xyPairsView.VariablesGrid.GetColumn(col);
+                        IGridColumn column = this.xYPairsView.VariablesGrid.GetColumn(col);
                         column.HeaderText = columnName;
                     }
                 }
@@ -443,7 +435,7 @@ namespace UserInterface.Presenters
         /// <param name="changedModel">The model that has changed.</param>
         private void OnModelChanged(object changedModel)
         {
-            if (changedModel == this.xyPairs)
+            if (changedModel == this.xYPairs)
             {
                 this.PopulateView();
             }

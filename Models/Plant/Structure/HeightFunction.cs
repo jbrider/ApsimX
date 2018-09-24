@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Text;
 using Models.Core;
 using System.Xml.Serialization;
-using Models.PMF.Functions;
+using Models.Functions;
 
 namespace Models.PMF.Struct
 {
     /// <summary>
+    /// # [Name]
     /// Height is used by the MicroClimate model to calculate the aerodynamic resistance used for calculation of potential transpiration.
     /// Calculates the potential height increment and then multiplies it by the smallest of any childern functions (Child functions represent stress).
     /// </summary>
@@ -15,11 +16,15 @@ namespace Models.PMF.Struct
     public class HeightFunction : Model, IFunction
     {
         /// <summary>The potential height</summary>
-        [Link] IFunction PotentialHeight = null;
+        [Link]
+        private IFunction PotentialHeight = null;
+
         /// <summary>The potential height yesterday</summary>
-        double PotentialHeightYesterday = 0;
+        private double PotentialHeightYesterday = 0;
+
         /// <summary>The height</summary>
-        double Height = 0;
+        private double Height = 0;
+        
         /// <summary>The child functions</summary>
         private List<IModel> ChildFunctions;
 
@@ -45,5 +50,32 @@ namespace Models.PMF.Struct
             Height += DeltaHeight;
             return Height;
         }
+
+        /// <summary>Clear all variables</summary>
+        private void Clear()
+        {
+            PotentialHeightYesterday = 0;
+            Height = 0;
+            DeltaHeight = 0;
+        }
+
+        /// <summary>Called when crop is sowing</summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="data">The <see cref="EventArgs"/> instance containing the event data.</param>
+        [EventSubscribe("PlantSowing")]
+        private void OnPlantSowing(object sender, SowPlant2Type data)
+        {
+                Clear();
+        }
+
+        /// <summary>Called when crop is ending</summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        [EventSubscribe("PlantEnding")]
+        private void OnPlantEnding(object sender, EventArgs e)
+        {
+                Clear();
+        }
+
     }
 }

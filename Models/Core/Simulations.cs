@@ -10,10 +10,12 @@ using APSIM.Shared.Utilities;
 using System.Linq;
 using Models.Core.Interfaces;
 using Models.Core.Runners;
+using Models.Storage;
 
 namespace Models.Core
 {
     /// <summary>
+    /// # [Name]
     /// Encapsulates a collection of simulations. It is responsible for creating this collection,
     /// changing the structure of the components within the simulations, renaming components, adding
     /// new ones, deleting components. The user interface talks to an instance of this class.
@@ -25,7 +27,10 @@ namespace Models.Core
         /// <summary>The _ file name</summary>
         private string _FileName;
 
+        [NonSerialized]
         private Links links;
+
+        private Checkpoints checkpoints;
 
         /// <summary>Gets or sets the width of the explorer.</summary>
         /// <value>The width of the explorer.</value>
@@ -86,18 +91,19 @@ namespace Models.Core
         /// <summary>Constructor</summary>
         private Simulations()
         {
-            Version = APSIMFileConverter.LastestVersion;
+            Version = ApsimFile.Converter.LatestVersion;
             LoadErrors = new List<Exception>();
+            checkpoints = new Checkpoints(this);
         }
 
         /// <summary>
         /// Create a simulations model
         /// </summary>
         /// <param name="children">The child models</param>
-        public static Simulations Create(IEnumerable<Model> children)
+        public static Simulations Create(IEnumerable<IModel> children)
         {
             Simulations newSimulations = new Core.Simulations();
-            newSimulations.Children.AddRange(children);
+            newSimulations.Children.AddRange(children.Cast<Model>());
 
             // Call the OnDeserialised method in each model.
             Events events = new Core.Events(newSimulations);
@@ -119,17 +125,49 @@ namespace Models.Core
             return newSimulations;
         }
 
+        /// <summary>
+        /// Checkpoint the simulation.
+        /// </summary>
+        /// <param name="checkpointName">Name of checkpoint</param>
+        public void AddCheckpoint(string checkpointName)
+        {
+            List<string> filesReferenced = new List<string>();
+            filesReferenced.Add(FileName);
+            filesReferenced.AddRange(FindAllReferencedFiles());
+            DataStore storage = Apsim.Find(this, typeof(DataStore)) as DataStore;
+            if (storage != null)
+                storage.AddCheckpoint(checkpointName, filesReferenced);
+        }
+
+        /// <summary>
+        /// Revert this object to a previous one.
+        /// </summary>
+        /// <param name="checkpointName">Name of checkpoint</param>
+        /// <returns>A new simulations object that represents the file on disk</returns>
+        public Simulations RevertCheckpoint(string checkpointName)
+        {
+            DataStore storage = Apsim.Find(this, typeof(DataStore)) as DataStore;
+            if (storage != null)
+                storage.RevertCheckpoint(checkpointName);
+            return Read(FileName);
+        }
+
         /// <summary>Create a simulations object by reading the specified filename</summary>
         /// <param name="FileName">Name of the file.</param>
         /// <returns></returns>
         /// <exception cref="System.Exception">Simulations.Read() failed. Invalid simulation file.\n</exception>
         public static Simulations Read(string FileName)
         {
+            if (!File.Exists(FileName))
+                throw new Exception("Cannot read file: " + FileName + ". File does not exist.");
+
             // Run the converter.
-            APSIMFileConverter.ConvertToLatestVersion(FileName);
+            Stream inStream = ApsimFile.Converter.ConvertToLatestVersion(FileName);
 
             // Deserialise
-            Simulations simulations = XmlUtilities.Deserialise(FileName, Assembly.GetExecutingAssembly()) as Simulations;
+            Simulations simulations = XmlUtilities.Deserialise(inStream, Assembly.GetExecutingAssembly()) as Simulations;
+
+            inStream.Close();
 
             if (simulations != null)
             {
@@ -166,7 +204,7 @@ namespace Models.Core
         public static Simulations Read(XmlNode node)
         {
             // Run the converter.
-            APSIMFileConverter.ConvertToLatestVersion(node, null);
+            ApsimFile.Converter.ConvertToLatestVersion(node, null);
 
             // Deserialise
             Simulations simulations = XmlUtilities.Deserialise(node, Assembly.GetExecutingAssembly()) as Simulations;
@@ -204,9 +242,22 @@ namespace Models.Core
         public void Run(Simulation simulation, bool doClone)
         {
             Apsim.ParentAllChildren(simulation);
-            RunSimulation simulationRunner = new RunSimulation(simulation, doClone);
+            RunSimulation simulationRunner = new RunSimulation(this, simulation, doClone);
             Links.Resolve(simulationRunner);
             simulationRunner.Run(new System.Threading.CancellationTokenSource());
+        }
+
+        /// <summary>
+        /// Perform model substitutions, if necessary, then issue a "Loaded" event
+        /// </summary>
+        public void MakeSubsAndLoad(Simulation simulation)
+        {
+            MakeSubstitutions(simulation);
+
+            // Call OnLoaded in all models.
+            Events events = new Events(simulation);
+            LoadedEventArgs loadedArgs = new LoadedEventArgs();
+            events.Publish("Loaded", new object[] { simulation, loadedArgs });
         }
 
         /// <summary>Make model substitutions if necessary.</summary>
@@ -228,9 +279,14 @@ namespace Models.Core
                             match.Parent.Children.Insert(index, newModel as Model);
                             newModel.Parent = match.Parent;
                             match.Parent.Children.Remove(match as Model);
-                            Events events = new Events(newModel);
-                            LoadedEventArgs loadedArgs = new LoadedEventArgs();
-                            events.Publish("Loaded", new object[] { newModel, loadedArgs });
+                            // If we're doing substitutions for an entire Simulation,
+                            // the Loaded event will be issued later. Otherwise, issue one now
+                            if (!(model is Simulation))
+                            {
+                                Events events = new Events(newModel);
+                                LoadedEventArgs loadedArgs = new LoadedEventArgs();
+                                events.Publish("Loaded", new object[] { newModel, loadedArgs });
+                            }
                         }
                     }
                 }
@@ -241,7 +297,7 @@ namespace Models.Core
         /// <param name="FileName">Name of the file.</param>
         public void Write(string FileName)
         {
-            string tempFileName = Path.Combine(Path.GetTempPath(), Path.GetFileName(FileName));
+            string tempFileName = Path.GetTempFileName();
             StreamWriter Out = new StreamWriter(tempFileName);
             Write(Out);
             Out.Close();
@@ -339,6 +395,7 @@ namespace Models.Core
             if (storage != null)
                 services.Add(storage);
             services.Add(this);
+            services.Add(checkpoints);
             links = new Links(services);
         }
 
@@ -356,6 +413,17 @@ namespace Models.Core
                     (simulation as Simulation).ClearCaches();
             // Explicitly clear the child lists
             ClearChildLists();
+        }
+
+        /// <summary>Find all referenced files from all models.</summary>
+        public IEnumerable<string> FindAllReferencedFiles()
+        {
+            SortedSet<string> fileNames = new SortedSet<string>();
+            foreach (IReferenceExternalFiles model in Apsim.ChildrenRecursively(this, typeof(IReferenceExternalFiles)))
+                foreach (string fileName in model.GetReferencedFileNames())
+                    fileNames.Add(PathUtilities.GetAbsolutePath(fileName, FileName));
+            
+            return fileNames;
         }
 
         /// <summary>Documents the specified model.</summary>
@@ -400,19 +468,20 @@ namespace Models.Core
                         throw new Exception("Cannot find model to document: " + modelNameToDocument);
 
                     // resolve all links in cloned simulation.
-                    Links.Resolve(clonedSimulation);
+                    Links.Resolve(clonedSimulation, true);
 
                     modelToDocument.IncludeInDocumentation = true;
                     foreach (IModel child in Apsim.ChildrenRecursively(modelToDocument))
                         child.IncludeInDocumentation = true;
 
                     // Document the model.
-                    modelToDocument.Document(tags, headingLevel, 0);
+                    AutoDocumentation.DocumentModel(modelToDocument, tags, headingLevel, 0, documentAllChildren:true);
 
                     // Unresolve links.
-                    Links.Unresolve(clonedSimulation);
+                    Links.Unresolve(clonedSimulation, allLinks: true);
                 }
             }
         }
+
     }
 }

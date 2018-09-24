@@ -2,11 +2,12 @@
 namespace Models.Soils.Nutrient
 {
     using Core;
-    using Models.PMF.Functions;
+    using Models.Functions;
     using System;
     using System.Reflection;
 
     /// <summary>
+    /// # [Name]
     /// Encapsulates a nitrogen flow between mineral N pools.
     /// </summary>
     [Serializable]
@@ -77,9 +78,9 @@ namespace Models.Soils.Nutrient
                 if (destination != null)
                     destination[i] += nitrogenFlowToDestination;
             }
-            solutes.SetSolute(sourceName, source);
+            solutes.SetSolute(sourceName, SoluteManager.SoluteSetterType.Soil, source);
             if (destination != null)
-                solutes.SetSolute(destinationName, destination);
+                solutes.SetSolute(destinationName, SoluteManager.SoluteSetterType.Soil, destination);
         }
 
 

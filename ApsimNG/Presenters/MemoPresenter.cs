@@ -6,15 +6,14 @@
 namespace UserInterface.Presenters
 {
     using System.IO;
-    using System.Xml;
-    using APSIM.Shared.Utilities;
     using Models;
     using Views;
+    using System;
 
     /// <summary>
     /// Presents the text from a memo component.
     /// </summary>
-    public class MemoPresenter : IPresenter, IExportable
+    public class MemoPresenter : IPresenter
     {
         /// <summary>
         /// The memo object
@@ -51,10 +50,17 @@ namespace UserInterface.Presenters
         /// </summary>
         public void Detach()
         {
-            string markdown = this.memoViewer.GetMarkdown();
-            if (markdown != this.memoModel.MemoText)
+            try
             {
-                this.explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(this.memoModel, "MemoText", markdown));
+                string markdown = this.memoViewer.GetMarkdown();
+                if (markdown != this.memoModel.MemoText)
+                {
+                    this.explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(this.memoModel, "MemoText", markdown));
+                }
+            }
+            catch (Exception err)
+            {
+                explorerPresenter.MainPresenter.ShowError(err);
             }
         }
 
@@ -70,17 +76,5 @@ namespace UserInterface.Presenters
             }
         }
 
-        /// <summary>
-        /// Export the contents of this memo to the specified file.
-        /// </summary>
-        /// <param name="folder">The name of the folder</param>
-        /// <returns>The text from the memo</returns>
-        public string ConvertToHtml(string folder)
-        {
-            System.Xml.XmlDocument doc = new System.Xml.XmlDocument();
-            doc.LoadXml(this.memoModel.MemoText);
-            XmlNode bodyNode = XmlUtilities.Find(doc.DocumentElement, "body");
-            return bodyNode.InnerXml;
-        }
     }
 }

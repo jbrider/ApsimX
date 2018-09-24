@@ -1,11 +1,12 @@
 ﻿namespace Models.Soils.Nutrient
 {
     using Models.Core;
-    using PMF.Functions;
+    using Functions;
     using System;
     using System.Collections.Generic;
     using APSIM.Shared.Utilities;
     /// <summary>
+    /// # [Name]
     /// This pool encapsulates the carbon and nitrogen within a soil organic matter pool.  Child functions provide information on its initialisation and flows of C and N from it to other pools, or losses from the system.
     /// </summary>
     [Serializable]

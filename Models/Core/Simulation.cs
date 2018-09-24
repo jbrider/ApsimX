@@ -10,23 +10,35 @@ using APSIM.Shared.Utilities;
 using Models.Factorial;
 using System.ComponentModel;
 using Models.Core.Runners;
+using System.Linq;
 
 namespace Models.Core
 {
     /// <summary>
+    /// # [Name]
     /// A simulation model
     /// </summary>
     [ValidParent(ParentType = typeof(Simulations))]
     [ValidParent(ParentType = typeof(Experiment))]
+    [ValidParent(ParentType = typeof(Morris))]
     [Serializable]
     [ScopedModel]
-    public class Simulation : Model, IJobGenerator
+    public class Simulation : Model, ISimulationGenerator
     {
         [NonSerialized]
         private ScopingRules scope = null;
 
         /// <summary>Has this simulation been run?</summary>
         private bool hasRun;
+
+        /// <summary>Return total area.</summary>
+        public double Area
+        {
+            get
+            {
+                return Apsim.Children(this, typeof(Zone)).Sum(z => (z as Zone).Area);
+            }
+        }
 
         /// <summary>
         /// An enum that is used to indicate message severity when writing messages to the .db
@@ -41,6 +53,18 @@ namespace Models.Core
 
             /// <summary>Error</summary>
             Error
+        };
+
+        /// <summary>
+        /// An enum that is used to indicate message severity when writing messages to the status window.
+        /// </summary>
+        public enum MessageType
+        {
+            /// <summary>Information</summary>
+            Information,
+
+            /// <summary>Warning</summary>
+            Warning
         };
 
         /// <summary>Returns the object responsible for scoping rules.</summary>
@@ -127,15 +151,15 @@ namespace Models.Core
 
         /// <summary>Simulation runs are about to begin.</summary>
         [EventSubscribe("BeginRun")]
-        private void OnBeginRun(IEnumerable<string> knownSimulationNames = null, IEnumerable<string> simulationNamesBeingRun = null)
+        private void OnBeginRun()
         {
             hasRun = false;
         }
 
         /// <summary>Gets the next job to run</summary>
-        public IRunnable NextJobToRun()
+        public Simulation NextSimulationToRun(bool doFullFactorial = true)
         {
-            if (Parent is IJobGenerator || hasRun)
+            if (Parent is ISimulationGenerator || hasRun)
                 return null;
             hasRun = true;
 
@@ -146,17 +170,57 @@ namespace Models.Core
             {
                 Simulations simulationEngine = Apsim.Parent(this, typeof(Simulations)) as Simulations;
                 simulationToRun = Apsim.Clone(this) as Simulation;
-                simulationEngine.MakeSubstitutions(simulationToRun);
+
+                // We are breaking.NET naming rules with our manager scripts.All our manager scripts are class 
+                // Script in the Models namespace.This is OK until we do a clone(binary serialise/deserialise). 
+                // When this happens, the serialisation engine seems to choose the first assembly it can find 
+                // that has the 'right' code.It seems that if the script c# is close to an existing assembly then 
+                // it chooses that assembly. In the attached .apsimx, it chooses the wrong temporary assembly for 
+                // SowingRule2. It chooses SowingRule assembly even though the script for the 2 manager files is 
+                // different. I'm not sure how to fix this yet. A brute force way is to recompile all manager 
+                // scripts after cloning.
+                // https://github.com/APSIMInitiative/ApsimX/issues/2603
+
+                simulationEngine.MakeSubsAndLoad(simulationToRun);
             }
-            return new RunSimulation(simulationToRun, doClone: false);
+            return simulationToRun;
         }
 
         /// <summary>Gets a list of simulation names</summary>
-        public IEnumerable<string> GetSimulationNames()
+        public IEnumerable<string> GetSimulationNames(bool fullFactorial = true)
         {
-            if (Parent is IJobGenerator)
+            if (Parent is ISimulationGenerator)
                 return new string[0];
             return new string[] { Name };
+        }
+
+        /// <summary>Gets a list of factors</summary>
+        public List<ISimulationGeneratorFactors> GetFactors()
+        {
+            List<ISimulationGeneratorFactors> factors = new List<ISimulationGeneratorFactors>();
+            // Add top level simulation zone. This is needed if Report is in top level.
+            factors.Add(new SimulationGeneratorFactors(new string[] { "SimulationName", "Zone" },
+                                                       new string[] { Name, Name },
+                                                       "Simulation", Name));
+            foreach (Zone zone in Apsim.ChildrenRecursively(this, typeof(Zone)))
+            {
+                var factor = new SimulationGeneratorFactors(new string[] { "SimulationName", "Zone" },
+                                                            new string[] { Name, zone.Name }, 
+                                                            "Simulation", Name);
+                factors.Add(factor);
+                factor.AddFactor("Zone", zone.Name);
+            }
+            return factors;
+        }
+
+        /// <summary>
+        /// Generates an .apsimx file for this simulation.
+        /// </summary>
+        /// <param name="path">Directory to write the file to.</param>
+        public void GenerateApsimXFile(string path)
+        {
+            string xml = Apsim.Serialise(Simulations.Create(new List<IModel> { this, new Models.Storage.DataStore() }));
+            File.WriteAllText(Path.Combine(path, Name + ".apsimx"), xml);
         }
     }
 }

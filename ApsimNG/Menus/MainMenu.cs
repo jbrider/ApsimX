@@ -7,10 +7,7 @@ namespace UserInterface.Presenters
 {
     using System;
     using System.Diagnostics;
-    using System.Reflection;
-    using Models;
     using Models.Core;
-    using global::UserInterface.Forms;
 
     /// <summary>
     /// This class contains methods for all main menu items that the ExplorerView exposes to the user.
@@ -87,6 +84,17 @@ namespace UserInterface.Presenters
         }
 
         /// <summary>
+        /// User has clicked on clear status panel.
+        /// </summary>
+        /// <param name="sender">Sender object.</param>
+        /// <param name="args">Event arguments.</param>
+        [MainMenu(MenuName = "Clear Status")]
+        public void ClearStatusPanel(object sender, EventArgs args)
+        {
+            explorerPresenter.MainPresenter.ClearStatusPanel();
+        }
+
+        /// <summary>
         /// User has clicked on Help
         /// </summary>
         /// <param name="sender">Sender of the event</param>
@@ -95,7 +103,7 @@ namespace UserInterface.Presenters
         public void OnHelp(object sender, EventArgs e)
         {
             Process process = new Process();
-            process.StartInfo.FileName = "http://www.apsim.info/Documentation/ApsimX/Overview.aspx";
+            process.StartInfo.FileName = "https://apsimnextgeneration.netlify.com/";
             process.Start();
         }
 

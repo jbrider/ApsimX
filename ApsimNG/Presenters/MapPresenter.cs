@@ -5,6 +5,8 @@
 // -----------------------------------------------------------------------
 namespace UserInterface.Presenters
 {
+    using System;
+    using System.Collections.Generic;
     using System.Drawing;
     using System.IO;
     using Models;
@@ -15,7 +17,7 @@ namespace UserInterface.Presenters
     /// This presenter connects an instance of a Model.Map with a 
     /// UserInterface.Views.MapView
     /// </summary>
-    public class MapPresenter : IPresenter
+    public class MapPresenter : IPresenter, IExportable
     {
         /// <summary>
         /// The axis model
@@ -28,6 +30,11 @@ namespace UserInterface.Presenters
         private IMapView view;
 
         /// <summary>
+        /// The parent explorer presenter.
+        /// </summary>
+        private ExplorerPresenter explorerPresenter;
+
+        /// <summary>
         /// Attach the specified Model and View.
         /// </summary>
         /// <param name="model">The model</param>
@@ -37,13 +44,14 @@ namespace UserInterface.Presenters
         {
             this.map = model as Map;
             this.view = view as MapView;
+            this.explorerPresenter = explorerPresenter;
 
             // Tell the view to populate the axis.
             this.PopulateView();
             this.view.Zoom = this.map.Zoom;
             this.view.Center = this.map.Center;
-            this.view.ZoomChanged += this.OnZoomChanged;
-            this.view.PositionChanged += this.OnPositionChanged;
+            this.view.ViewChanged += this.OnViewChanged;
+            explorerPresenter.CommandHistory.ModelChanged += OnModelChanged;
         }
 
         /// <summary>
@@ -51,15 +59,15 @@ namespace UserInterface.Presenters
         /// </summary>
         public void Detach()
         {
+            explorerPresenter.CommandHistory.ModelChanged -= OnModelChanged;
             this.view.StoreSettings();
-            this.view.ZoomChanged -= this.OnZoomChanged;
-            this.view.PositionChanged -= this.OnPositionChanged;
+            this.view.ViewChanged -= this.OnViewChanged;
         }
 
         /// <summary>Export the map to PDF</summary>
         /// <param name="folder">The working directory name</param>
         /// <returns>The filename string</returns>
-        internal string ExportToPDF(string folder)
+        public string ExportToPNG(string folder)
         {
             string path = Apsim.FullPath(this.map).Replace(".Simulations.", string.Empty);
             string fileName = Path.Combine(folder, path + ".png");
@@ -75,7 +83,8 @@ namespace UserInterface.Presenters
         /// </summary>
         private void PopulateView()
         {
-            this.view.ShowMap(this.map.GetCoordinates());
+            List<string> files = new List<string>();
+            this.view.ShowMap(this.map.GetCoordinates(files), files, this.map.Zoom, this.map.Center);
         }
 
         /// <summary>
@@ -83,9 +92,19 @@ namespace UserInterface.Presenters
         /// </summary>
         /// <param name="sender">Sender object</param>
         /// <param name="e">Event arguments</param>
-        private void OnZoomChanged(object sender, System.EventArgs e)
+        private void OnViewChanged(object sender, System.EventArgs e)
         {
-            this.map.Zoom = this.view.Zoom;
+            // Maintain a list of all property changes that we need to make.
+            List<Commands.ChangeProperty.Property> properties = new List<Commands.ChangeProperty.Property>();
+
+            // Store the property values.
+            properties.Add(new Commands.ChangeProperty.Property(this.map, "Zoom", this.view.Zoom));
+            properties.Add(new Commands.ChangeProperty.Property(this.map, "Center", this.view.Center));
+            this.explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(properties));
+
+            // properties.Add()
+            // this.explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(map, "Zoom", this.view.Zoom));
+            // this.map.Zoom = this.view.Zoom;
         }
 
         /// <summary>
@@ -95,7 +114,27 @@ namespace UserInterface.Presenters
         /// <param name="e">Event arguments</param>
         private void OnPositionChanged(object sender, System.EventArgs e)
         {
-            this.map.Center = this.view.Center;
+            try
+            {
+                this.explorerPresenter.CommandHistory.Add(new Commands.ChangeProperty(map, "Center", this.view.Center));
+            }
+            catch (Exception err)
+            {
+                explorerPresenter.MainPresenter.ShowError(err);
+            }
+        }
+
+        /// <summary>
+        /// The model has changed. Update the view.
+        /// </summary>
+        /// <param name="changedModel">The model that has changed.</param>
+        private void OnModelChanged(object changedModel)
+        {
+            if (changedModel == this.map)
+            {
+                this.view.Zoom = this.map.Zoom;
+                this.view.Center = this.map.Center;
+            }
         }
     }
 }
