@@ -120,6 +120,11 @@ namespace Models.PMF
                 waterSupply += MathUtilities.Sum(Z.Water) * Z.Zone.Area;
             }
 
+            var totalWaterSupplyLayers = root.CalculateTotalWaterSupplyForSorghum();
+            var totalWaterSupply = totalWaterSupplyLayers.Sum();
+          
+            WatSupply = totalWaterSupply;
+
             // Calculate total plant water demand.
             WDemand = 0.0; //NOTE: This is in L, not mm, to arbitrate water demands for spatial simulations.
             foreach (IArbitration o in Organs)

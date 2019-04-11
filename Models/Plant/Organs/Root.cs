@@ -610,6 +610,7 @@ namespace Models.PMF.Organs
             NDemand.Storage = nDemands.Storage.Value();
 
             //The DM is allocated using CalculateRootActivityValues to proportion between layers
+            //check the potential for timing issues re: water levels
             double TotalRAw = 0;
             foreach (ZoneState Z in Zones)
                 TotalRAw += MathUtilities.Sum(Z.CalculateRootActivityValues());
@@ -899,6 +900,71 @@ namespace Models.PMF.Organs
                     return supply;
                 }
             }            
+        }
+        /// <summary>
+        ///     CalculateTotalWaterSupplyForSorghum
+        /// </summary>
+        public double[] CalculateTotalWaterSupplyForSorghum()
+        {
+            ZoneState myZone = Zones[0];
+            if (myZone == null)
+                return null;
+
+            if (myZone.soil.Weirdo != null)
+                return new double[myZone.soil.Thickness.Length]; //With Weirdo, water extraction is not done through the arbitrator because the time step is different.
+            else
+            {
+                if (RootFrontCalcSwitch?.Value() >= 1.0)
+                {
+                    double[] kl = myZone.soil.KL(parentPlant.Name);
+                    double[] ll = myZone.soil.LL(parentPlant.Name);
+                    var currentLayer = Soil.LayerIndexOfDepth(Depth, PlantZone.soil.Thickness);
+
+                    double[] lldep = new double[myZone.soil.Thickness.Length];
+                    double[] available = new double[myZone.soil.Thickness.Length];
+
+                    double[] supply = new double[myZone.soil.Thickness.Length];
+                    LayerMidPointDepth = Soil.ToMidPoints(myZone.soil.Thickness);
+                    for (int layer = 0; layer < myZone.soil.Thickness.Length; layer++)
+                    {
+                        lldep[layer] = ll[layer] * myZone.soil.Thickness[layer];
+                        //had to change reference to zone.Water to soil.Water
+                        available[layer] = Math.Max(myZone.soil.Water[layer] - lldep[layer], 0.0);
+                        if (currentLayer == layer)
+                        {
+                            var layerproportion = Soil.ProportionThroughLayer(layer, myZone.Depth, myZone.soil.Thickness);
+                            available[layer] *= layerproportion;
+                        }
+
+                        if (layer <= Soil.LayerIndexOfDepth(myZone.Depth, myZone.soil.Thickness))
+                        {
+                            supply[layer] = Math.Max(0.0, kl[layer] * klModifier.Value(layer) *
+                                available[layer] * rootProportionInLayer(layer, myZone));
+                        }
+                    }
+                    if (MathUtilities.Sum(supply) < 0.0)
+                        return supply;
+                    return supply;
+                }
+                else
+                {
+                    double[] kl = myZone.soil.KL(parentPlant.Name);
+                    double[] ll = myZone.soil.LL(parentPlant.Name);
+
+                    double[] supply = new double[myZone.soil.Thickness.Length];
+                    LayerMidPointDepth = Soil.ToMidPoints(myZone.soil.Thickness);
+                    for (int layer = 0; layer < myZone.soil.Thickness.Length; layer++)
+                    {
+                        if (layer <= Soil.LayerIndexOfDepth(myZone.Depth, myZone.soil.Thickness))
+                        {
+                            //had to change reference to zone.Water to soil.Water
+                            supply[layer] = Math.Max(0.0, kl[layer] * klModifier.Value(layer) *
+                            (myZone.soil.Water[layer] - ll[layer] * myZone.soil.Thickness[layer]) * rootProportionInLayer(layer, myZone));
+                        }
+                    }
+                    return supply;
+                }
+            }
         }
 
         /// <summary>Calculate the proportion of root in a layer within a zone.</summary>
