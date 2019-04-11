@@ -205,12 +205,7 @@ namespace Models.PMF.Organs
         /// <summary>Calculates the water demand.</summary>
         public double CalculateWaterDemand()
         {
-            if (WaterDemandFunction != null)
-                return WaterDemandFunction.Value();
-            else
-            {
-                return WaterDemand;
-            }
+            return WaterDemandFunction.Value();
         }
         /// <summary>Gets the transpiration.</summary>
         public double Transpiration { get { return WaterAllocation; } }
@@ -602,7 +597,10 @@ namespace Models.PMF.Organs
                 laiEquilibWaterToday = LAI;
 
             avLaiEquilibWater = updateAvLaiEquilibWater(laiEquilibWaterToday, 10);
-            var sdRatio = WaterDemand < 0.001 ? 1.0 : WaterDemand / Arbitrator.WatSupply;
+            //water demand is initially calculated inside of the stats function in soilArbitrator
+            //have to wait until it is finished to get a final waterDemand... could be done elsewhere
+            WaterDemand = CalculateWaterDemand();
+            var sdRatio = WaterDemand < 0.001 ? 1.0 : Math.Min(Arbitrator.WatSupply / WaterDemand, 1.0);
             avSDRatio = updateAvSDRatio(sdRatio, 5);
             //// average of the last 10 days of laiEquilibWater`
             //laiEquilibWater.push_back(laiEquilibWaterToday);

@@ -1132,7 +1132,7 @@ namespace Models.PMF.Organs
                     var kl = KL[layer];
                     var klmod = klModifier.Value(layer);
 
-                    supply[layer] = Math.Max(0.0, available[layer] * KL[layer] * klModifier.Value(layer) *
+                    supply[layer] = Math.Max(0.0, available[layer] * KL[layer] * 
                         rootProportionInLayer(layer, PlantZone));
 
                     supplyTotal += supply[layer];
@@ -1310,11 +1310,41 @@ namespace Models.PMF.Organs
                     if (Live.Wt * (1.0 - senescedFrac) < BiomassToleranceValue)
                         senescedFrac = 1.0;  // remaining amount too small, senesce all
 
+                    var dltDmSenesced = Live.Wt * senescedFrac;
+                    if(!MathUtilities.FloatsAreEqual(Live.Wt, Live.StructuralWt) || !MathUtilities.FloatsAreEqual(Live.N, Live.StructuralN))
+                    {
+                        throw new Exception("Sorghum Root should only be using Structural");
+                    }
+                    var senescedNConcentration = MathUtilities.Divide(Live.StructuralN, Live.Wt,0.0);
+                    var dltNSenesced = dltDmSenesced * senescedNConcentration;
 
-                    Biomass Loss = Live * senescedFrac;
-                    Live.Subtract(Loss);
-                    Dead.Add(Loss);
-                    Senesced.Add(Loss);
+                    var totalDmLoss = 0.0;
+                    var totalNLoss = 0.0;
+                    for (int i = 0; i < PlantZone.LayerLive.Length;++i)
+                    {
+                        var layerNConcentration = MathUtilities.Divide(PlantZone.LayerLive[i].N, PlantZone.LayerLive[i].Wt, 0.0);
+                        var dmLoss = PlantZone.LayerLive[i].StructuralWt * senescedFrac;
+                        PlantZone.LayerLive[i].StructuralWt -= dmLoss;
+                        PlantZone.LayerDead[i].StructuralWt += dmLoss;
+                        var nLoss = dmLoss * layerNConcentration;
+                        PlantZone.LayerLive[i].StructuralN -= nLoss;
+                        PlantZone.LayerDead[i].StructuralN += nLoss;
+                        totalDmLoss += dmLoss;
+                        totalNLoss += nLoss;
+                    }
+                    if(!MathUtilities.FloatsAreEqual(totalDmLoss,dltDmSenesced) || !MathUtilities.FloatsAreEqual(totalNLoss,dltNSenesced))
+                    {
+                        throw new Exception("Sorghum Root should only be using Structural");
+                    }
+
+                    Live.StructuralWt -= dltDmSenesced;
+                    Dead.StructuralWt += dltDmSenesced;
+                    Senesced.StructuralWt += dltDmSenesced;
+
+                    Live.StructuralN -= dltNSenesced;
+                    Dead.StructuralN += dltNSenesced;
+                    Senesced.StructuralN += dltNSenesced;
+
                 }
                 else
                 {
