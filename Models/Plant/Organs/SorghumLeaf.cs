@@ -578,7 +578,6 @@ namespace Models.PMF.Organs
         private double calcLaiSenescenceWater()
         {
             /* TODO : Direct translation sort of. needs work */
-            Arbitrator.WatSupply = Plant.Root.PlantAvailableWaterSupply();
             double dlt_dm_transp = PotentialBiomassTEFunction.Value();
 
             //double radnCanopy = divide(plant->getRadnInt(), coverGreen, plant->today.radn);
@@ -599,6 +598,12 @@ namespace Models.PMF.Organs
             avLaiEquilibWater = updateAvLaiEquilibWater(laiEquilibWaterToday, 10);
             //water demand is initially calculated inside of the stats function in soilArbitrator
             //have to wait until it is finished to get a final waterDemand... could be done elsewhere
+
+            if(Plant.Root.Zones.Count > 1)
+            {
+                int tmp = Plant.Root.Zones.Count;
+            }
+            //Arbitrator.WatSupply = Plant.Root.Zones[0].AvailableSW.Sum();
             WaterDemand = CalculateWaterDemand();
             var sdRatio = WaterDemand < 0.001 ? 1.0 : Math.Min(Arbitrator.WatSupply / WaterDemand, 1.0);
             avSDRatio = updateAvSDRatio(sdRatio, 5);
@@ -939,11 +944,11 @@ namespace Models.PMF.Organs
             var classicLeafDemand = Math.Max(0.0, calcLAI() * TargetSLN.Value() - Live.N);
             //need to remove pmf nDemand calcs from totalDemand to then add in what it should be from classic
             var pmfLeafDemand = nDemands.Structural.Value() + nDemands.Metabolic.Value();
-
+              
             var structural = nDemands.Structural.Value();
             var diff = classicLeafDemand - pmfLeafDemand;
             var diffdiff = structural + diff;
-            if (Math.Abs(diffdiff) > 0.0001)
+            if (Math.Abs(               diffdiff) > 0.0001)
             {
                 double tmp = diffdiff;
             }
