@@ -212,10 +212,10 @@ namespace Models.PMF.Organs
             if (root.RootDepthStressFactor != null)
             {
                 //calc StressFactorLookup   
-                var extractable = soil.SoilWater.ESW[RootLayer];
-
-                var llDep = soil.LL15[RootLayer] * soil.Thickness[RootLayer];
-                var capacity = soil.DULmm[RootLayer] - llDep;
+                //timing is an issue - old sorghum didn't update the soilwater until end of day
+                //using locally stored values before wateruptake occurs
+                var extractable = AvailableSW[RootLayer];
+                var capacity = PotentialAvailableSW[RootLayer];
 
                 var ratio = 0.0;
                 if(capacity > 0.0)
