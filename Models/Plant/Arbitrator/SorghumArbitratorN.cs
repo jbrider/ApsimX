@@ -64,6 +64,7 @@ namespace Models.PMF
             AllocateStructural(leafIndex, ref TotalAllocated, ref NotAllocated, BAT);
 
             var nDemand = totalPlantNDemand - rootDemand;
+            if(nDemand < 0.00001) { nDemand = 0; }
 
             var leafAlloc = CalcPoportionalAllocation(NotAllocated, BAT.MetabolicDemand[leafIndex], nDemand);
             AllocateMetabolic(leafIndex, leafAlloc, BAT);
