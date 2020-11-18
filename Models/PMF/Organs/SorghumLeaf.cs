@@ -381,11 +381,42 @@ namespace Models.PMF.Organs
         /// <summary>Gets the total radiation intercepted.</summary>
         [Units("MJ/m^2/day")]
         [Description("This is the intercepted radiation value that is passed to the RUE class to calculate DM supply")]
+        public double MicroRadiation
+        {
+            get
+            {
+                if (LightProfile != null)
+                {
+                    double TotalRadn = 0;
+                    for (int i = 0; i < LightProfile.Length; i++)
+                        if (Double.IsNaN(LightProfile[i].amount))
+                            TotalRadn += 0;
+                        else TotalRadn += LightProfile[i].amount;
+                    return TotalRadn;
+                }
+                else
+                    return CoverGreen * MetData.Radn;
+            }
+        }
+
+        /// <summary>Gets the total radiation intercepted.</summary>
+        [Units("MJ/m^2/day")]
+        [Description("This is the intercepted radiation value that is passed to the RUE class to calculate DM supply")]
         public double RadiationIntercepted
         {
             get
             {
-                return CoverGreen * MetData.Radn;
+                if (LightProfile != null)
+                {
+                    double TotalRadn = 0;
+                    for (int i = 0; i < LightProfile.Length; i++)
+                        if (Double.IsNaN(LightProfile[i].amount))
+                            TotalRadn += 0;
+                        else TotalRadn += LightProfile[i].amount;
+                    return TotalRadn;
+                }
+                else
+                    return CoverGreen * MetData.Radn;
             }
         }
 
