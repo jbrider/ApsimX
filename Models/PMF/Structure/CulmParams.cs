@@ -1,4 +1,5 @@
-﻿using Models.Functions;
+﻿using Models.Core;
+using Models.Functions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +13,7 @@ namespace Models.PMF.Struct
     /// dependencies.
     /// </summary>
     [Serializable]
-    public class CulmParams
+    public class CulmParams 
     {
         /// <summary>
         /// Function which corrects for other growing leaves.
@@ -138,5 +139,21 @@ namespace Models.PMF.Struct
         /// Function which fetches TT target from endjuv to floaral init.
         /// </summary>
         public Action<double> GetTTFI { get; set; }
+
+        /// <summary>
+        /// largestLeafParams[2]
+        /// </summary>
+        public BellCurveC4Function LeafArea { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public virtual CulmParams Clone()
+        {
+            CulmParams newFunction = (CulmParams)MemberwiseClone();
+            return newFunction;
+        }
+
     }
 }

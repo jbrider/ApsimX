@@ -214,12 +214,19 @@ namespace Models.PMF.Struct
 		[Link(Type = LinkType.Child, ByName = true)]
 		private IFunction tillerSlaBound = null;
 
-		/// <summary>
-		/// If true, tillering will be calculated on the fly.
-		/// Otherwise, number of tillers must be supplied via fertile
-		/// tiller number in the sowing rule.
-		/// </summary>
-		[Description("Dynamic tillering enabled")]
+        /// <summary>
+        /// SLA Range.
+        /// </summary>
+        [Units("")]
+        [Link(Type = LinkType.Child, ByName = true)]
+        private BellCurveC4Function LeafArea = null;
+
+        /// <summary>
+        /// If true, tillering will be calculated on the fly.
+        /// Otherwise, number of tillers must be supplied via fertile
+        /// tiller number in the sowing rule.
+        /// </summary>
+        [Description("Dynamic tillering enabled")]
 		public bool DynamicTillering { get; set; }
 
 		/// <summary>
@@ -404,6 +411,10 @@ namespace Models.PMF.Struct
 		[JsonIgnore]
 		public double TTTargetFI { get; private set; }
 
+		/// <summary>Current Leaf Number of the main culm</summary>
+		[JsonIgnore]
+		public double CurrentLeafNo { get; private set; }
+
 		private CulmParams culmParams;
 
 		/// <summary>
@@ -465,11 +476,18 @@ namespace Models.PMF.Struct
 				AMaxA = aMaxA,
 				AMaxB = aMaxB,
 				AMaxC = aMaxC,
+				LeafArea = LeafArea
 			};
 
 			// Initialise Main
+			var newCulm = new Culm(0, culmParams);
+			//newCulm.Parent = this;
+			newCulm.parameters.LeafArea = LeafArea.Clone();
+			newCulm.parameters.LeafArea.Parent = newCulm;
+			newCulm.parameters.LeafArea.CurrentCulm = newCulm;
+			newCulm.Parent = this;
 
-			Culms.Add(new Culm(0, culmParams));
+			Culms.Add(newCulm);
 			tillersAdded = 0;
 			supply = 0;
 			demand = 0;
@@ -609,13 +627,13 @@ namespace Models.PMF.Struct
 					Culms[0].calculateLeafSizes();
 					FinalLeafNo = Culms[0].FinalLeafNo;
 				}
-				double currentLeafNo = Culms[0].CurrentLeafNo;
+				CurrentLeafNo = Culms[0].CurrentLeafNo;
 				double dltLeafNoMainCulm = Culms[0].calcLeafAppearance();
 				dltLeafNo = dltLeafNoMainCulm; //updates nLeaves
 				double newLeafNo = Culms[0].CurrentLeafNo;
 
-				CalcTillerNumber((int)Math.Floor(newLeafNo), (int)Math.Floor(currentLeafNo));
-				CalcTillerAppearance((int)Math.Floor(newLeafNo), (int)Math.Floor(currentLeafNo));
+				CalcTillerNumber((int)Math.Floor(newLeafNo), (int)Math.Floor(CurrentLeafNo));
+				CalcTillerAppearance((int)Math.Floor(newLeafNo), (int)Math.Floor(CurrentLeafNo));
 
 				for (int i = 1; i < (int)Culms.Count; ++i)
 				{
@@ -654,12 +672,12 @@ namespace Models.PMF.Struct
 						Culms[0].CalcLeafSizes();
 				}
 
-				double currentLeafNo = Culms[0].CurrentLeafNo;
+				CurrentLeafNo = Culms[0].CurrentLeafNo;
 				double dltLeafNoMainCulm = Culms[0].calcLeafAppearance();
 				dltLeafNo = dltLeafNoMainCulm; //updates nLeaves
 				double newLeafNo = Culms[0].CurrentLeafNo;
 
-				CalcTillerAppearance((int)Math.Floor(newLeafNo), (int)Math.Floor(currentLeafNo));
+				CalcTillerAppearance((int)Math.Floor(newLeafNo), (int)Math.Floor(CurrentLeafNo));
 
 				for (int i = 1; i < Culms.Count; i++)
 				{
@@ -1041,7 +1059,14 @@ namespace Models.PMF.Struct
 			//a new tiller is created with each new leaf, up the number of fertileTillers
 			if (tillerFraction + fractionToAdd > 1)
 			{
-				Culm newCulm = new Culm(leafAtAppearance, culmParams);
+				Culm newCulm = new Culm(leafAtAppearance, culmParams.Clone());
+				newCulm.CulmNo = Culms.Count;
+				newCulm.CurrentLeafNo = 0;//currentLeaf);
+
+				newCulm.parameters.LeafArea = LeafArea.Clone();
+				newCulm.parameters.LeafArea.CurrentCulm = newCulm;
+				newCulm.parameters.LeafArea.Parent = newCulm;
+				newCulm.Parent = this;
 
 				//bell curve distribution is adjusted horizontally by moving the curve to the left.
 				//This will cause the first leaf to have the same value as the nth leaf on the main culm.
@@ -1052,15 +1077,15 @@ namespace Models.PMF.Struct
 				//T4 = 5 leaves
 				//T5 = 6 leaves
 				//T6 = 7 leaves
-				newCulm.CulmNo = Culms.Count;
-				newCulm.CurrentLeafNo = 0;//currentLeaf);
 				verticalAdjustment = aMaxVert.Value() + (tillersAdded * aTillerVert.Value());
 				newCulm.VertAdjValue = verticalAdjustment;
 				newCulm.Proportion = fraction;
 				newCulm.calcFinalLeafNo();
 				newCulm.calcLeafAppearance();
 				newCulm.calculateLeafSizes();
+
 				Culms.Add(newCulm);
+
 			}
 			else
 			{

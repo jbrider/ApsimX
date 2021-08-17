@@ -1,5 +1,6 @@
 ﻿using APSIM.Shared.Utilities;
 using Models.Core;
+using Models.Functions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace Models.PMF.Struct
 	/// 
 	/// </summary>
 	[Serializable]
-    public class Culm
+    public class Culm : Model
     {
 		private const double smm2sm = 1e-6;
 
@@ -33,7 +34,10 @@ namespace Models.PMF.Struct
 		//double tplaInflectionRatio,tplaProductionCoef;
 		// leaf appearance
 
-		private CulmParams parameters;
+		/// <summary>
+		/// 
+		/// </summary>
+		public CulmParams parameters;
 
 		/// <summary>
 		/// Culm number.
@@ -85,6 +89,7 @@ namespace Models.PMF.Struct
 			//plant = p;
 			leafNoAtAppearance = leafAppearance;
 			this.parameters = parameters;
+			
 			Initialize();
 			//doRegistrations();
 		}
@@ -206,12 +211,40 @@ namespace Models.PMF.Struct
 		/// <summary>
 		/// Calculate potential leaf area.
 		/// </summary>
+		public double EffectiveLeafNo => CurrentLeafNo + parameters.LeafNoCorrection.Value();
+
+		/// <summary>
+		/// Calculate potential leaf area.
+		/// </summary>
+		public double EffectiveFinalLeafNo => FinalLeafNo - leafNoAtAppearance;
+
+		/// <summary>
+		/// Calculate potential leaf area.
+		/// </summary>
 		/// <returns></returns>
 		public double calcPotentialLeafArea()
 		{
 			//once leaf no is calculated leaf area of largest expanding leaf is determined
 			double leafNoEffective = Math.Min(CurrentLeafNo + parameters.LeafNoCorrection.Value(), FinalLeafNo - leafNoAtAppearance);
+			var tm = EffectiveLeafNo;
 			LeafArea = calcIndividualLeafSize(leafNoEffective);
+			var chkLeafNo = (parameters.LeafArea.FindChild("EffectiveLeafNo1") as IFunction).Value();
+			if(leafNoEffective != chkLeafNo)
+            {
+				int tmp = 0;
+				tmp += 2;
+			}
+			var result = parameters.LeafArea.Value();
+			if (((parameters.LeafArea as Model).Parent as Culm).CulmNo != CulmNo)
+			{
+				int tmp = 0;
+				tmp += 2;
+			}
+			if (LeafArea != result)
+            {
+				int tmp = 0;
+				tmp += 2;
+            }
 			//leafArea = getAreaOfCurrentLeaf(leafNoEffective);		HACK
 			//leafArea *= proportion; //proportion is 1 unless this tiller is a fraction ie: Fertile Tiller Number is 2.2, then 1 tiller is 0.2
 			LeafArea = LeafArea * smm2sm * parameters.Density * dltLeafNo; // in dltLai
