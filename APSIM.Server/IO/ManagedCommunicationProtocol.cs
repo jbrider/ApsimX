@@ -44,9 +44,9 @@ namespace APSIM.Server.IO
         /// This is a convenience extension to the <see cref="ICommandManager"/> API.
         /// </summary>
         /// <param name="command">This details the parameters to be read.</param>
-        public DataTable ReadOutput(ReadCommand command)
+        public DataTable SendQuery(ReadQuery command)
         {
-            return (DataTable)SendCommandValidateResponse(command);
+            return SendQueryValidateResponse<DataTable>(command as ICommand);
         }
 
         /// <summary>
@@ -93,36 +93,26 @@ namespace APSIM.Server.IO
         /// </summary>
         /// <param name="command">The command that was run.</param>
         /// <param name="error">Error details (if command failed). If command succeeded, this will be null.</param>
-        public void OnCommandFinished(ICommand command, Exception error = null)
+        public void OnCommandFinished(object result, Exception error = null)
         {
-            if (error == null)
-            {
-                if (command is ReadCommand reader)
-                {
-                    if (reader.Result == null)
-                    {
-                        Exception err = new Exception("READ result is null");
-                        PipeUtilities.SendObjectToPipe(stream, err);
-                        throw err;
-                    }
-                    PipeUtilities.SendObjectToPipe(stream, reader.Result);
-                    // foreach (string param in reader.Parameters)
-                    // {
-                    //     if (reader.Result.Columns[param] == null)
-                    //     {
-                    //         IEnumerable<string> columns = reader.Result.Columns.Cast<DataColumn>().Select(c => c.ColumnName);
-                    //         string columnNames = string.Join(", ", columns);
-                    //         throw new Exception($"Columns {param} does not exist in table {reader.Result.TableName} (table only has {reader.Result.Columns.Count} columns ({columnNames}) with {reader.Result.Rows.Count} rows)");
-                    //     }
-                    //     Array data = reader.Result.AsEnumerable().Select(r => r[param]).ToArray();
-                    //     PipeUtilities.SendObjectToPipe(stream, data);
-                    // }
-                }
-                else
-                    PipeUtilities.SendObjectToPipe(stream, fin);
-            }
-            else
-                PipeUtilities.SendObjectToPipe(stream, error);
+            if (error != null) PipeUtilities.SendObjectToPipe(stream, error);
+            
+            result ??= fin; //assumes null is a finished command and not something invalid.
+
+            PipeUtilities.SendObjectToPipe(stream, result);
+
+            //if (command is ReadCommand reader)
+            //{
+            //    if (reader.Result == null)
+            //    {
+            //        Exception err = new Exception("READ result is null");
+            //        PipeUtilities.SendObjectToPipe(stream, err);
+            //        throw err;
+            //    }
+            //    PipeUtilities.SendObjectToPipe(stream, reader.Result);
+            //}
+            //else
+            //    PipeUtilities.SendObjectToPipe(stream, fin);
         }
 
         /// <summary>
@@ -132,8 +122,7 @@ namespace APSIM.Server.IO
         {
             return PipeUtilities.GetObjectFromPipe(stream);
         }
-
-        private object SendCommandValidateResponse(ICommand command)
+        private void SendCommandValidateResponse(ICommand command)
         {
             PipeUtilities.SendObjectToPipe(stream, command);
 
@@ -155,27 +144,44 @@ namespace APSIM.Server.IO
             if (resp is Exception err)
                 throw new Exception($"{command} ran with errors", err);
 
-            if (command is RunCommand && (resp as string) != fin)
+            if ((resp as string) != fin)
                 throw new Exception($"Unexpected response from server. Expected {fin}, got {resp}");
+        }
 
-            if (command is ReadCommand)
-            {
-                DataTable result = resp as DataTable;
-                if (result == null)
-                    throw new Exception($"Unexpected response from server upon job completion. Expected DataTable, got {resp}");
-                // DataTable result = new DataTable(readCommand.TableName);
-                // foreach (string parameter in readCommand.Parameters)
-                // {
-                //     Array array = resp as Array;
-                //     if (array == null)
-                //        throw new Exception($"Unexpected response from server upon job completion. Expected array, got {resp}"); 
-                //     Type elementType = array.GetType().GetElementType();
-                //     DataTableUtilities.AddColumnOfObjects(result, parameter, array);
-                // }
-                return result;
-            }
+        private T SendQueryValidateResponse<T>(ICommand command) where T : class
+        {
+            PipeUtilities.SendObjectToPipe(stream, command);
 
-            return resp;
+            // Server will send through ACK upon receipt of the command.
+            object resp = Read();
+            if (!(resp is string msg) || msg != ack)
+                throw new Exception($"Unexpected response from server after sending command. Expected {ack}, got {resp}");
+
+            // Server will send through another response upon completion of the command.
+            resp = Read();
+
+            // Validate the reponse from the server.
+            if (resp == null)
+                throw new Exception($"Received null response from server upon job completion");
+
+            if (resp is Exception err)
+                throw new Exception($"{command} ran with errors", err);
+
+            T result = resp as T;
+            if (result == null)
+                throw new Exception($"Unexpected response from server upon job completion. Expected T, got {resp}");
+            // DataTable result = new DataTable(readCommand.TableName);
+            // foreach (string parameter in readCommand.Parameters)
+            // {
+            //     Array array = resp as Array;
+            //     if (array == null)
+            //        throw new Exception($"Unexpected response from server upon job completion. Expected array, got {resp}"); 
+            //     Type elementType = array.GetType().GetElementType();
+            //     DataTableUtilities.AddColumnOfObjects(result, parameter, array);
+            // }
+            //}
+
+            return result;
         }
     }
 }

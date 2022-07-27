@@ -158,18 +158,28 @@ namespace APSIM.Server
             try
             {
                 // Clone the simulations object before running the command.
+                object result = null;
                 var timer = Stopwatch.StartNew();
-                command.Run(runner, jobRunner, sims.FindChild<Models.Storage.IDataStore>());
+
+                var query = command as IQuery<object>;
+                if (query != null)
+                {
+                    result = query.HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
+                }
+                else
+                {
+                    command.Handle(runner, jobRunner);
+                }
                 timer.Stop();
                 WriteToLog($"Command ran in {timer.ElapsedMilliseconds}ms");
-                connection.OnCommandFinished(command);
+                connection.OnCommandFinished(result);
                 
             }
             catch (Exception err)
             {
                 if (options.Verbose)
                     Console.Error.WriteLine(err);
-                connection.OnCommandFinished(command, err);
+                connection.OnCommandFinished(null, err);
             }
         }
 

@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using Models.Core;
-using Models.Core.ApsimFile;
 using Models.Core.Replace;
 using Models.Core.Run;
-using Models.Factorial;
 using Models.Storage;
 
 namespace APSIM.Server.Commands
@@ -21,7 +17,9 @@ namespace APSIM.Server.Commands
         private bool runTests;
         private IEnumerable<string> simulationNamesToRun;
         private int numberOfProcessors;
-        private IEnumerable<IReplacement> changes;
+        
+        /// <summary>Changes to apply to simulations before running</summary>
+        public IEnumerable<IReplacement> Changes { get; set; }
 
         /// <summary>
         /// Creates a <see cref="RunCommand" /> instance with sensible defaults.
@@ -32,7 +30,7 @@ namespace APSIM.Server.Commands
             runPostSimulationTools = true;
             runTests = true;
             numberOfProcessors = -1;
-            this.changes = changes;
+            this.Changes = changes;
             simulationNamesToRun = null;
         }
 
@@ -49,23 +47,8 @@ namespace APSIM.Server.Commands
             runPostSimulationTools = runPostSimTools;
             this.runTests = runTests;
             numberOfProcessors = numProcessors;
-            this.changes = changes;
+            this.Changes = changes;
             simulationNamesToRun = simulationNames;
-        }
-
-        /// <summary>
-        /// Run the command.
-        /// </summary>
-        /// <param name="runner">Job runner.</param>
-        public void Run(Runner runner, ServerJobRunner jobRunner, IDataStore storage)
-        {
-            jobRunner.Replacements = changes;
-            var timer = Stopwatch.StartNew();
-            List<Exception> errors = runner.Run();
-            timer.Stop();
-            Console.WriteLine($"Raw job took {timer.ElapsedMilliseconds}ms");
-            if (errors != null && errors.Count > 0)
-                throw new AggregateException("File ran with errors", errors);
         }
 
         public override bool Equals(object obj)
@@ -82,9 +65,9 @@ namespace APSIM.Server.Commands
                     return false;
                 if (simulationNamesToRun.Zip(command.simulationNamesToRun, (x, y) => x != y).Any(x => x))
                     return false;
-                if (changes.Count() != command.changes.Count())
+                if (Changes.Count() != command.Changes.Count())
                     return false;
-                if (changes.Zip(command.changes, (x, y) => !x.Equals(y)).Any(x => x))
+                if (Changes.Zip(command.Changes, (x, y) => !x.Equals(y)).Any(x => x))
                     return false;
                 return true;
             }
@@ -93,12 +76,12 @@ namespace APSIM.Server.Commands
 
         public override int GetHashCode()
         {
-            return (runPostSimulationTools, runTests, numberOfProcessors, simulationNamesToRun, changes).GetHashCode();
+            return (runPostSimulationTools, runTests, numberOfProcessors, simulationNamesToRun, Changes).GetHashCode();
         }
 
         public override string ToString()
         {
-            return $"{GetType().Name} with {changes.Count()} changes";
+            return $"{GetType().Name} with {Changes.Count()} changes";
         }
     }
 }

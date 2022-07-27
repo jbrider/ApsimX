@@ -13,6 +13,10 @@ namespace APSIM.Server.Commands
         /// <summary>
         /// Run the command.
         /// </summary>
-        void Run(Runner runner, ServerJobRunner jobRunner, IDataStore storage);
     }
+    public interface IQuery<T>
+    {
+
+    }
+
 }

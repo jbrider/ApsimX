@@ -91,7 +91,7 @@ namespace UnitTests
         [Test]
         public void TestReadReadCommand()
         {
-            ICommand target = new ReadCommand("table", new[] { "param1", "param2", "param3" });
+            ICommand target = new ReadQuery("table", new[] { "param1", "param2", "param3" }) as ICommand;
             TestRead(target);
         }
 
@@ -111,7 +111,7 @@ namespace UnitTests
         [Test]
         public void TestWriteReadCommand()
         {
-            ICommand command = new ReadCommand(" the table to be read ", new[] { "a single parameter"});
+            ICommand command = new ReadQuery(" the table to be read ", new[] { "a single parameter"}) as ICommand;
             TestWrite(command);
         }
 
@@ -179,7 +179,7 @@ namespace UnitTests
 
                 if (target is RunCommand)
                     PipeUtilities.SendObjectToPipe(client, "FIN_MANAGED");
-                if (target is ReadCommand readCommand)
+                if (target is ReadQuery readCommand)
                     PipeUtilities.SendObjectToPipe(client, new DataTable(readCommand.TableName));
             }
 

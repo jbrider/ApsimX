@@ -78,7 +78,7 @@ namespace APSIM.Server
         /// <summary>
         /// Names of the worker pods.
         /// </summary>
-        private IEnumerable<string> workers;
+        private IEnumerable<V1Pod> workers;
 
         /// <summary>
         /// Create a job manager instance.
@@ -122,18 +122,18 @@ namespace APSIM.Server
         /// <summary>
         /// fixme!!!
         /// </summary>
-        private IEnumerable<string> FindWorkers()
+        private IEnumerable<V1Pod> FindWorkers()
         {
-            List<string> podNames = new List<string>();
+            List<V1Pod> podWorkers = new List<V1Pod>();
             string labelSelector = $"{podTypeLabelName}={workerPodType}";
             V1PodList pods = client.ListNamespacedPod(podNamespace, labelSelector: labelSelector);
             foreach (V1Pod pod in pods.Items)
             {
                 string podName = pod.Name();
                 if (!podName.Contains("job-manager"))
-                    podNames.Add(podName);
+                    podWorkers.Add(pod);
             }
-            return podNames;
+            return podWorkers;
         }
 
         /// <summary>
@@ -145,15 +145,18 @@ namespace APSIM.Server
         protected override void RunCommand(ICommand command, IConnectionManager connection)
         {
             Exception error = null;
+            object result = null;
             try
             {
-                // Relay the command to all workers.
-                if (command is ReadCommand readCommand)
-                    // Read commands need to be handled slightly differently;
-                    // each pod will return a DataTable, which need to be merged.
-                    DoReadCommand(readCommand, connection);
+                var query = command as IQuery<object>;
+                if (query != null)
+                {
+                    result = query.HandleQueryRelay(workers, relayOptions, podPortNoLabelName);
+                }
                 else
-                    DoGenericCommand(command, connection);
+                {
+                    command.HandleCommandRelay(workers, relayOptions, podPortNoLabelName);
+                }
             }
             catch (Exception err)
             {
@@ -161,45 +164,45 @@ namespace APSIM.Server
                 WriteToLog(err.ToString());
             }
 
-            connection.OnCommandFinished(command, error);
+            connection.OnCommandFinished(result, error);
         }
 
-        private void DoGenericCommand(ICommand command, IConnectionManager connection)
-        {
-            List<Task> tasks = new List<Task>();
-            foreach (string podName in workers)
-                tasks.Add(RelayCommand(podName, command, connection));
-            foreach (Task task in tasks)
-            {
-                task.Wait();
-                if (task.Status == TaskStatus.Faulted || task.Exception != null)
-                    throw new Exception($"{command} failed", task.Exception);
-            }
-        }
+        //private void DoGenericCommand(ICommand command, IConnectionManager connection)
+        //{
+        //    List<Task> tasks = new List<Task>();
+        //    foreach (var podName in workers)
+        //        tasks.Add(RelayCommand(podName, command, connection));
+        //    foreach (Task task in tasks)
+        //    {
+        //        task.Wait();
+        //        if (task.Status == TaskStatus.Faulted || task.Exception != null)
+        //            throw new Exception($"{command} failed", task.Exception);
+        //    }
+        //}
 
-        private Task RelayCommand(string podName, ICommand command, IConnectionManager connection)
-        {
-            return Task.Run(() =>
-            {
-                V1Pod pod = GetWorkerPod(podName);
-                if (string.IsNullOrEmpty(pod.Status.PodIP))
-                    throw new NotImplementedException("Pod IP not set.");
+        //private Task RelayCommand(string podName, ICommand command, IConnectionManager connection)
+        //{
+        //    return Task.Run(() =>
+        //    {
+        //        V1Pod pod = GetWorkerPod(podName);
+        //        if (string.IsNullOrEmpty(pod.Status.PodIP))
+        //            throw new NotImplementedException("Pod IP not set.");
 
-                // Create a new socket connection to the pod.
-                string ip = pod.Status.PodIP;
-                ushort port = GetPortNo(pod);
-                WriteToLog($"Attempting connection to pod {podName} on {ip}:{port}");
-                using (NetworkSocketClient conn = new NetworkSocketClient(relayOptions.Verbose, ip, port, Protocol.Managed))
-                {
-                    WriteToLog($"Connection to {podName} established. Sending command...");
+        //        // Create a new socket connection to the pod.
+        //        string ip = pod.Status.PodIP;
+        //        ushort port = GetPortNo(pod);
+        //        WriteToLog($"Attempting connection to pod {podName} on {ip}:{port}");
+        //        using (NetworkSocketClient conn = new NetworkSocketClient(relayOptions.Verbose, ip, port, Protocol.Managed))
+        //        {
+        //            WriteToLog($"Connection to {podName} established. Sending command...");
 
-                    // Relay the command to the pod.
-                    conn.SendCommand(command);
+        //            // Relay the command to the pod.
+        //            conn.SendCommand(command);
 
-                    WriteToLog($"Closing connection to {podName}...");
-                }
-            });
-        }
+        //            WriteToLog($"Closing connection to {podName}...");
+        //        }
+        //    });
+        //}
 
         /// <summary>
         /// Get the port number on which a pod is listening.
@@ -217,54 +220,54 @@ namespace APSIM.Server
             return port;
         }
 
-        private void DoReadCommand(ReadCommand command, IConnectionManager connection)
-        {
-            List<Task<DataTable>> tasks = new List<Task<DataTable>>();
-            foreach (string podName in workers)
-                tasks.Add(RelayReadCommand(podName, command, connection));
-            List<DataTable> tables = new List<DataTable>();
-            foreach (Task<DataTable> task in tasks)
-            {
-                task.Wait();
-                if (task.Status == TaskStatus.Faulted || task.Exception != null)
-                    throw new Exception($"{command} failed", task.Exception);
-                if (task.Result != null)
-                    tables.Add(task.Result);
-            }
-            command.Result = DataTableUtilities.Merge(tables);
-            foreach (string param in command.Parameters)
-                if (command.Result.Columns[param] == null)
-                    throw new Exception($"Column {param} does not exist in table {command.TableName} (it appears to have disappeared in the merge)");
-        }
+        //private void DoReadCommand(ReadQuery command, IConnectionManager connection)
+        //{
+        //    List<Task<DataTable>> tasks = new List<Task<DataTable>>();
+        //    foreach (string podName in workers)
+        //        tasks.Add(RelayReadCommand(podName, command, connection));
+        //    List<DataTable> tables = new List<DataTable>();
+        //    foreach (Task<DataTable> task in tasks)
+        //    {
+        //        task.Wait();
+        //        if (task.Status == TaskStatus.Faulted || task.Exception != null)
+        //            throw new Exception($"{command} failed", task.Exception);
+        //        if (task.Result != null)
+        //            tables.Add(task.Result);
+        //    }
+        //    command.Result = DataTableUtilities.Merge(tables);
+        //    foreach (string param in command.Parameters)
+        //        if (command.Result.Columns[param] == null)
+        //            throw new Exception($"Column {param} does not exist in table {command.TableName} (it appears to have disappeared in the merge)");
+        //}
 
-        private Task<DataTable> RelayReadCommand(string podName, ReadCommand command, IConnectionManager connection)
-        {
-            return Task.Run<DataTable>(() =>
-            {
-                V1Pod pod = GetWorkerPod(podName);
-                if (string.IsNullOrEmpty(pod.Status.PodIP))
-                    throw new NotImplementedException("Pod IP not set.");
+        //private Task<DataTable> RelayReadCommand(string podName, ReadQuery command, IConnectionManager connection)
+        //{
+        //    return Task.Run<DataTable>(() =>
+        //    {
+        //        V1Pod pod = GetWorkerPod(podName);
+        //        if (string.IsNullOrEmpty(pod.Status.PodIP))
+        //            throw new NotImplementedException("Pod IP not set.");
 
-                // Create a new socket connection to the pod.
-                string ip = pod.Status.PodIP;
-                ushort port = GetPortNo(pod);
-                WriteToLog($"Attempting connection to pod {podName} on {ip}:{port}");
-                using (NetworkSocketClient conn = new NetworkSocketClient(relayOptions.Verbose, ip, port, Protocol.Managed))
-                {
-                    WriteToLog($"Connection to {podName} established. Sending command...");
+        //        // Create a new socket connection to the pod.
+        //        string ip = pod.Status.PodIP;
+        //        ushort port = GetPortNo(pod);
+        //        WriteToLog($"Attempting connection to pod {podName} on {ip}:{port}");
+        //        using (NetworkSocketClient conn = new NetworkSocketClient(relayOptions.Verbose, ip, port, Protocol.Managed))
+        //        {
+        //            WriteToLog($"Connection to {podName} established. Sending command...");
 
-                    // Relay the command to the pod.
-                    try
-                    {
-                        return conn.ReadOutput(command);
-                    }
-                    catch (Exception err)
-                    {
-                        throw new Exception($"Unable to read output from pod {podName}", err);
-                    }
-                }
-            });
-        }
+        //            // Relay the command to the pod.
+        //            try
+        //            {
+        //                return conn.SendQuery(command);
+        //            }
+        //            catch (Exception err)
+        //            {
+        //                throw new Exception($"Unable to read output from pod {podName}", err);
+        //            }
+        //        }
+        //    });
+        //}
 
         /// <summary>
         /// Get the worker pod with the given name.

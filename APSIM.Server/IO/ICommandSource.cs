@@ -20,6 +20,6 @@ namespace APSIM.Server.IO
         /// </summary>
         /// <param name="command">The command that was run.</param>
         /// <param name="error">Error details (if command failed). If command succeeded, this will be null.</param>
-        void OnCommandFinished(ICommand command, Exception error = null);
+        void OnCommandFinished(object result, Exception error = null);
     }
 }

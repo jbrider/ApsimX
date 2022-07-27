@@ -102,7 +102,7 @@ namespace APSIM.Server.IO
                 {
                     // Need to check that ReadCommand columns all exist so that
                     // we can send error instead of FIN if necessary.
-                    if (command is ReadCommand read)
+                    if (command is ReadQuery read)
                         foreach (string param in read.Parameters)
                             if (read.Result.Columns[param] == null)
                                 throw new Exception($"Column {param} does not exist in table {read.Result.TableName}");
@@ -111,7 +111,7 @@ namespace APSIM.Server.IO
                     SendMessage(fin);
 
                     // In the case of READ commands, we need to send through the results.
-                    if (command is ReadCommand reader)
+                    if (command is ReadQuery reader)
                     {
                         ValidateResponse(ReadString(), ack);
                         foreach (string param in reader.Parameters)
@@ -160,7 +160,7 @@ namespace APSIM.Server.IO
                 SendMessage(ack);
             }
 
-            return new ReadCommand(table, parameters);
+            return new ReadQuery(table, parameters);
         }
 
         public IEnumerable<IReplacement> ReadChanges()
