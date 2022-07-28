@@ -14,7 +14,7 @@ namespace APSIM.Server.Commands
         /// Run the command.
         /// </summary>
     }
-    public interface IQuery<T>
+    public interface IQuery<T> : ICommand
     {
 
     }
