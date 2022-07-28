@@ -94,42 +94,44 @@ namespace APSIM.Server.IO
         /// </summary>
         /// <param name="command">The command.</param>
         /// <param name="error">Error encountered by the command.</param>
-        public void OnCommandFinished(ICommand command, Exception error = null)
+        //public void OnCommandFinished(ICommand command, Exception error = null)
+        public void OnCommandFinished(object command, Exception error = null)
         {
-            try
-            {
-                if (error == null)
-                {
-                    // Need to check that ReadCommand columns all exist so that
-                    // we can send error instead of FIN if necessary.
-                    if (command is ReadQuery read)
-                        foreach (string param in read.Parameters)
-                            if (read.Result.Columns[param] == null)
-                                throw new Exception($"Column {param} does not exist in table {read.Result.TableName}");
+            throw new NotImplementedException();
+            //try
+            //{
+            //    if (error == null)
+            //    {
+            //        // Need to check that ReadCommand columns all exist so that
+            //        // we can send error instead of FIN if necessary.
+            //        if (command is ReadQuery read)
+            //            foreach (string param in read.Parameters)
+            //                if (read.Result.Columns[param] == null)
+            //                    throw new Exception($"Column {param} does not exist in table {read.Result.TableName}");
 
-                    // Now send FIN - command has executed successfully.
-                    SendMessage(fin);
+            //        // Now send FIN - command has executed successfully.
+            //        SendMessage(fin);
 
-                    // In the case of READ commands, we need to send through the results.
-                    if (command is ReadQuery reader)
-                    {
-                        ValidateResponse(ReadString(), ack);
-                        foreach (string param in reader.Parameters)
-                        {
-                            Array data = reader.Result.AsEnumerable().Select(r => r[param]).ToArray();
-                            SendArray(data);
-                            ValidateResponse(ReadString(), ack);
-                        }
-                    }
-                }
-                else
-                    SendMessage(error.ToString());
-            }
-            catch (Exception err)
-            {
-                SendMessage(err.ToString());
-                throw;
-            }
+            //        // In the case of READ commands, we need to send through the results.
+            //        if (command is ReadQuery reader)
+            //        {
+            //            ValidateResponse(ReadString(), ack);
+            //            foreach (string param in reader.Parameters)
+            //            {
+            //                Array data = reader.Result.AsEnumerable().Select(r => r[param]).ToArray();
+            //                SendArray(data);
+            //                ValidateResponse(ReadString(), ack);
+            //            }
+            //        }
+            //    }
+            //    else
+            //        SendMessage(error.ToString());
+            //}
+            //catch (Exception err)
+            //{
+            //    SendMessage(err.ToString());
+            //    throw;
+            //}
         }
 
         /// <summary>
@@ -160,7 +162,7 @@ namespace APSIM.Server.IO
                 SendMessage(ack);
             }
 
-            return new ReadQuery(table, parameters);
+            return new ReadQuery(table, parameters) as ICommand;
         }
 
         public IEnumerable<IReplacement> ReadChanges()

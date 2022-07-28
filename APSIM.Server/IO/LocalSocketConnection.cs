@@ -69,7 +69,7 @@ namespace APSIM.Server.IO
         /// </summary>
         /// <param name="command">The command.</param>
         /// <param name="error">Error encountered by the command.</param>
-        public void OnCommandFinished(ICommand command, Exception error = null) => comms.OnCommandFinished(command, error);
+        public void OnCommandFinished(object result, Exception error = null) => comms.OnCommandFinished(result, error);
 
         /// <summary>
         /// Send a command to the connected client, and block until the
