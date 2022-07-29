@@ -151,10 +151,12 @@ namespace APSIM.Server
                 var query = command as IQuery<object>;
                 if (query != null)
                 {
+                    WriteToLog($"Relaying query...");
                     result = query.HandleQueryRelay(workers, relayOptions, podPortNoLabelName);
                 }
                 else
                 {
+                    WriteToLog($"Relaying command...");
                     command.HandleCommandRelay(workers, relayOptions, podPortNoLabelName);
                 }
             }
