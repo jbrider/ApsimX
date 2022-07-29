@@ -15,6 +15,7 @@ namespace APSIM.Server.Commands
     [Serializable]
     public class ReadQuery : IQuery<DataTable>
     {
+        public bool isQuery() => true;
         /// <summary>
         /// Name of the table from which parameters will be read.
         /// </summary>

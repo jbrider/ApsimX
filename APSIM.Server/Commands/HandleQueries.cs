@@ -14,9 +14,8 @@ namespace APSIM.Server.Commands
 {
     public static class HandleQueries
     {
-        public static object HandleQuery(this IQuery<object> query, IDataStore storage)
+        public static object HandleQuery(this ReadQuery readQuery, IDataStore storage)
         {
-            var readQuery = query as ReadQuery;
             if (readQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
             if (!storage.Reader.TableNames.Contains(readQuery.TableName))
@@ -34,9 +33,8 @@ namespace APSIM.Server.Commands
             return result;
         }
 
-        public static object HandleQueryRelay(this IQuery<object> query, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
+        public static object HandleQueryRelay(this ReadQuery readQuery, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
         {
-            var readQuery = query as ReadQuery;
             if (readQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
             List<Task<DataTable>> tasks = new List<Task<DataTable>>();
@@ -47,7 +45,7 @@ namespace APSIM.Server.Commands
             {
                 task.Wait();
                 if (task.Status == TaskStatus.Faulted || task.Exception != null)
-                    throw new Exception($"{query} failed", task.Exception);
+                    throw new Exception($"{readQuery} failed", task.Exception);
                 if (task.Result != null)
                     tables.Add(task.Result);
             }

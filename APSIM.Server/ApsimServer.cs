@@ -161,11 +161,10 @@ namespace APSIM.Server
                 object result = null;
                 var timer = Stopwatch.StartNew();
 
-                var query = command as IQuery<object>;
-                if (query != null)
+                if (command.isQuery())
                 {
                     WriteToLog($"Running query...");
-                    result = query.HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
+                    result = (command as ReadQuery).HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
                 }
                 else
                 {

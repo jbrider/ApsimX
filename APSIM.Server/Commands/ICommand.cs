@@ -13,6 +13,7 @@ namespace APSIM.Server.Commands
         /// <summary>
         /// Run the command.
         /// </summary>
+        public bool isQuery() => false;
     }
     public interface IQuery<T> : ICommand
     {
