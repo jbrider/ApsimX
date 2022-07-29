@@ -22,7 +22,7 @@ namespace APSIM.Server.Commands
                 throw new Exception($"Table {readQuery.TableName} does not exist in the database.");
 
             var result = storage.Reader.GetData(readQuery.TableName, fieldNames: readQuery.Parameters);
-            if (readQuery.Result == null)
+            if (result == null)
                 throw new Exception($"Unable to read table {readQuery.TableName} from datastore (cause unknown - but the table appears to exist)");
             
             foreach (string param in readQuery.Parameters)
@@ -50,6 +50,7 @@ namespace APSIM.Server.Commands
                     tables.Add(task.Result);
             }
             var result = DataTableUtilities.Merge(tables);
+            //result.TableName = readQuery.TableName;
             foreach (string param in readQuery.Parameters)
                 if (result.Columns[param] == null)
                     throw new Exception($"Column {param} does not exist in table {readQuery.TableName} (it appears to have disappeared in the merge)");
