@@ -270,5 +270,9 @@ namespace APSIM.Server.IO
         {
             throw new NotImplementedException();
         }
+        public T SendQuery<T>(IQuery<T> command) where T : class
+        {
+            throw new NotImplementedException();
+        }
     }
 }

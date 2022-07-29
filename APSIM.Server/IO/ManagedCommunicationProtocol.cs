@@ -44,9 +44,9 @@ namespace APSIM.Server.IO
         /// This is a convenience extension to the <see cref="ICommandManager"/> API.
         /// </summary>
         /// <param name="command">This details the parameters to be read.</param>
-        public DataTable SendQuery(ReadQuery command)
+        public T SendQuery<T>(IQuery<T> query) where T : class
         {
-            return SendQueryValidateResponse<DataTable>(command as ICommand);
+            return SendQueryValidateResponse<T>(query);
         }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace APSIM.Server.IO
                 throw new Exception($"Unexpected response from server. Expected {fin}, got {resp}");
         }
 
-        private T SendQueryValidateResponse<T>(ICommand command) where T : class
+        private T SendQueryValidateResponse<T>(IQuery<T> command) where T : class
         {
             PipeUtilities.SendObjectToPipe(stream, command);
 

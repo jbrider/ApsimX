@@ -14,6 +14,6 @@ namespace APSIM.Server.IO
         /// </summary>
         /// <param name="command">The command to be sent.</param>
         void SendCommand(ICommand command);
-        //void T SendQuery(IQuery<T> query) : Class;
+        T SendQuery<T>(IQuery<T> query) where T : class;
     }
 }

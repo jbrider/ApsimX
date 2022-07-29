@@ -77,11 +77,11 @@ namespace APSIM.Server.IO
         /// Read job output.
         /// </summary>
         /// <param name="command"></param>
-        public DataTable SendQuery(ReadQuery command)
+        public T SendQuery<T>(IQuery<T> query) where T : class
         {
             if (connectionType != Protocol.Managed)
                 throw new NotImplementedException("tbi");
-            return ((ManagedCommunicationProtocol)comms).SendQuery(command);
+            return comms.SendQuery(query);
         }
     }
 }
