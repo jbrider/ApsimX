@@ -26,7 +26,7 @@ namespace APSIM.Server.Commands
                 throw new Exception($"Unable to read table {readQuery.TableName} from datastore (cause unknown - but the table appears to exist)");
             
             foreach (string param in readQuery.Parameters)
-                if (readQuery.Result.Columns[param] == null)
+                if (result.Columns[param] == null)
                     throw new Exception($"Column {param} does not exist in table {readQuery.TableName}");
 
             result.TableName = readQuery.TableName;
