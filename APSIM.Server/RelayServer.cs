@@ -19,6 +19,54 @@ using System.Globalization;
 
 namespace APSIM.Server
 {
+    public class WorkerPod 
+    {
+        /// <summary>
+        /// A label with this name is added to all pods created by the
+        /// bootstrapper. The value of this label indicates the TCP port on
+        /// which the server in the pod is listening for connections.
+        /// </summary>
+        private const string podPortNoLabelName = "k8s.apsim.info/port-no";
+
+        public V1Pod Pod { get; set; }
+        public string Name { get; set; }
+        public string IPAddress { get; set; }
+        public ushort Port { get; set; }
+        public RelayServerOptions Options { get; set; }
+        public NetworkSocketClient? SocketConnection { get; set; }
+
+        public WorkerPod(V1Pod pod, RelayServerOptions relayOptions)
+        {
+            Pod = pod;
+            Name = pod.Name();
+            Options = relayOptions;
+
+            IPAddress = pod.Status.PodIP;
+            Port = GetPortNo(pod, podPortNoLabelName);
+            Console.WriteLine($"Attempting connection to pod {pod.Name()} on {IPAddress}:{Port}");
+            SocketConnection = new NetworkSocketClient(relayOptions.Verbose, IPAddress, Port, Protocol.Managed);
+            Console.WriteLine($"Connection to {pod.Name()} established.");
+        }
+
+
+        /// <summary>
+        /// Get the port number on which a pod is listening.
+        /// </summary>
+        /// <param name="pod">A worker pod.</param>
+        private static ushort GetPortNo(V1Pod pod, string podPortNoLabelName)
+        {
+            IDictionary<string, string> labels = pod.Metadata.Labels;
+            if (labels == null)
+                throw new InvalidOperationException($"Pod {pod.Name()} has no labels");
+            if (!labels.TryGetValue(podPortNoLabelName, out string portString))
+                throw new InvalidOperationException($"Pod {pod.Name()} has no {podPortNoLabelName} label");
+            if (!ushort.TryParse(portString, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort port))
+                throw new InvalidOperationException($"Unable to parse port number '{portString} for pod {pod.Name()}");
+            return port;
+        }
+
+    }
+
     /// <summary>
     /// Job manager for a kubernetes cluster. This class essentially takes an
     /// .apsimx file of arbitrary size as input, splits it into multiple smaller
@@ -78,7 +126,7 @@ namespace APSIM.Server
         /// <summary>
         /// Names of the worker pods.
         /// </summary>
-        private IEnumerable<V1Pod> workers;
+        private IEnumerable<WorkerPod> workers;
 
         /// <summary>
         /// Create a job manager instance.
@@ -122,16 +170,18 @@ namespace APSIM.Server
         /// <summary>
         /// fixme!!!
         /// </summary>
-        private IEnumerable<V1Pod> FindWorkers()
+        private IEnumerable<WorkerPod> FindWorkers()
         {
-            List<V1Pod> podWorkers = new List<V1Pod>();
+            var podWorkers = new List<WorkerPod>();
             string labelSelector = $"{podTypeLabelName}={workerPodType}";
             V1PodList pods = client.ListNamespacedPod(podNamespace, labelSelector: labelSelector);
             foreach (V1Pod pod in pods.Items)
             {
                 string podName = pod.Name();
                 if (!podName.Contains("job-manager"))
-                    podWorkers.Add(pod);
+                {
+                    podWorkers.Add(new WorkerPod (pod, relayOptions));
+                }
             }
             return podWorkers;
         }
@@ -151,12 +201,12 @@ namespace APSIM.Server
                 if (command.isQuery())
                 {
                     WriteToLog($"Relaying query...");
-                    result = (command as ReadQuery).HandleQueryRelay(workers, relayOptions, podPortNoLabelName);
+                    result = (command as ReadQuery).HandleQueryRelay(workers);
                 }
                 else
                 {
                     WriteToLog($"Relaying command...");
-                    command.HandleCommandRelay(workers, relayOptions, podPortNoLabelName);
+                    command.HandleCommandRelay(workers);
                 }
             }
             catch (Exception err)

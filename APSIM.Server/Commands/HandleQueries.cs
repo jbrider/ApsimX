@@ -1,13 +1,9 @@
-﻿using APSIM.Server.Cli;
-using APSIM.Server.IO;
+﻿using APSIM.Server.IO;
 using APSIM.Shared.Utilities;
-using k8s.Models;
 using Models.Storage;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace APSIM.Server.Commands
@@ -33,13 +29,13 @@ namespace APSIM.Server.Commands
             return result;
         }
 
-        public static object HandleQueryRelay(this ReadQuery readQuery, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
+        public static object HandleQueryRelay(this ReadQuery readQuery, IEnumerable<WorkerPod> workers)
         {
             if (readQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
             List<Task<DataTable>> tasks = new List<Task<DataTable>>();
             foreach (var pod in workers)
-                tasks.Add(RelayReadQuery(pod, readQuery, relayOptions, podPortNoLabelName));
+                tasks.Add(RelayReadQuery(pod, readQuery));
             List<DataTable> tables = new List<DataTable>();
             foreach (Task<DataTable> task in tasks)
             {
@@ -57,49 +53,39 @@ namespace APSIM.Server.Commands
             return result;
         }
 
-        private static Task<DataTable> RelayReadQuery(V1Pod pod, ReadQuery query, RelayServerOptions relayOptions, string podPortNoLabelName)
+        private static Task<DataTable> RelayReadQuery(WorkerPod pod, ReadQuery query)
         {
             return Task.Run(() =>
             {
-                if (string.IsNullOrEmpty(pod.Status.PodIP))
-                    throw new NotImplementedException("Pod IP not set.");
-
-                // Create a new socket connection to the pod.
-                string ip = pod.Status.PodIP;
-                ushort port = GetPortNo(pod, podPortNoLabelName);
-                Console.WriteLine($"Attempting connection to pod {pod.Name()} on {ip}:{port}");
-                using (NetworkSocketClient conn = new NetworkSocketClient(relayOptions.Verbose, ip, port, Protocol.Managed))
+                if (pod.SocketConnection != null)
                 {
-                    Console.WriteLine($"Connection to {pod.Name()} established. Sending command...");
+                    return pod.SocketConnection.SendQuery(query);
+                }
+                else 
+                {
+                    if (string.IsNullOrEmpty(pod.IPAddress))
+                        throw new NotImplementedException("Pod IP not set.");
 
-                    // Relay the command to the pod.
-                    try
+                    // Create a new socket connection to the pod.
+                    string ip = pod.IPAddress;
+                    ushort port = pod.Port;
+                    Console.WriteLine($"Attempting connection to pod {pod.Name} on {ip}:{port}");
+                    using (NetworkSocketClient conn = new NetworkSocketClient(pod.Options.Verbose, ip, port, Protocol.Managed))
                     {
-                        return conn.SendQuery(query);
-                    }
-                    catch (Exception err)
-                    {
-                        throw new Exception($"Unable to read output from pod {pod.Name()}", err);
+                        Console.WriteLine($"Connection to {pod.Name} established. Sending command...");
+
+                        // Relay the command to the pod.
+                        try
+                        {
+                            return conn.SendQuery(query);
+                        }
+                        catch (Exception err)
+                        {
+                            throw new Exception($"Unable to read output from pod {pod.Name}", err);
+                        }
                     }
                 }
             });
         }
-
-        /// <summary>
-        /// Get the port number on which a pod is listening.
-        /// </summary>
-        /// <param name="pod">A worker pod.</param>
-        private static ushort GetPortNo(V1Pod pod, string podPortNoLabelName)
-        {
-            IDictionary<string, string> labels = pod.Metadata.Labels;
-            if (labels == null)
-                throw new InvalidOperationException($"Pod {pod.Name()} has no labels");
-            if (!labels.TryGetValue(podPortNoLabelName, out string portString))
-                throw new InvalidOperationException($"Pod {pod.Name()} has no {podPortNoLabelName} label");
-            if (!ushort.TryParse(portString, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort port))
-                throw new InvalidOperationException($"Unable to parse port number '{portString} for pod {pod.Name()}");
-            return port;
-        }
-
     }
 }

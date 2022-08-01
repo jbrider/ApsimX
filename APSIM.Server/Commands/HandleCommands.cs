@@ -1,13 +1,9 @@
-﻿using APSIM.Server.Cli;
-using APSIM.Server.IO;
-using k8s.Models;
+﻿using APSIM.Server.IO;
 using Models.Core.Run;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace APSIM.Server.Commands
@@ -34,17 +30,17 @@ namespace APSIM.Server.Commands
                 throw new AggregateException("File ran with errors", errors);
 
         }
-        public static void HandleCommandRelay(this ICommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
+        public static void HandleCommandRelay(this ICommand command, IEnumerable<WorkerPod> workers)
         {
             if (command is WGPCommand)
             {
-                (command as WGPCommand).HandleCommandRelay(workers, relayOptions, podPortNoLabelName);
+                (command as WGPCommand).HandleCommandRelay(workers);
                 return;
             }
             
             List<Task> tasks = new List<Task>();
             foreach (var pod in workers)
-                tasks.Add(RelayCommand(pod, command, relayOptions, podPortNoLabelName));
+                tasks.Add(RelayCommand(pod, command));
 
             Parallel.ForEach(tasks, task =>
             {
@@ -54,7 +50,7 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static void HandleCommandRelay(this WGPCommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
+        public static void HandleCommandRelay(this WGPCommand command, IEnumerable<WorkerPod> workers)
         {
             Console.WriteLine($"Handling WGP Command Relay to see if it goes where it should");
             List<Task> tasks = new List<Task>();
@@ -62,7 +58,7 @@ namespace APSIM.Server.Commands
             foreach (var wc in workerCommands)
             {
                 var newCommand = new RunCommand(wc.cmd);
-                tasks.Add(RelayCommand(wc.worker, newCommand, relayOptions, podPortNoLabelName));
+                tasks.Add(RelayCommand(wc.worker, newCommand));
             }
 
             Parallel.ForEach(tasks, task =>
@@ -73,40 +69,32 @@ namespace APSIM.Server.Commands
             });
         }
 
-        private static Task RelayCommand(V1Pod pod, ICommand command, RelayServerOptions relayOptions, string podPortNoLabelName)
+        private static Task RelayCommand(WorkerPod pod, ICommand command)
         {
             return Task.Run(() =>
             {
-                // Create a new socket connection to the pod.
-                string ip = pod.Status.PodIP;
-                ushort port = GetPortNo(pod, podPortNoLabelName);
-                Console.WriteLine($"Attempting connection to pod {pod.Name()} on {ip}:{port}");
-                using (NetworkSocketClient conn = new NetworkSocketClient(relayOptions.Verbose, ip, port, Protocol.Managed))
+                if(pod.SocketConnection != null)
                 {
-                    Console.WriteLine($"Connection to {pod.Name()} established. Sending command...");
+                    pod.SocketConnection.SendCommand(command);
+                }
+                else
+                {
+                    // Create a new socket connection to the pod.
+                    string ip = pod.IPAddress;
+                    ushort port = pod.Port;
+                    Console.WriteLine($"Attempting connection to pod {pod.Name} on {ip}:{port}");
+                    using (NetworkSocketClient conn = new NetworkSocketClient(pod.Options.Verbose, ip, port, Protocol.Managed))
+                    {
+                        Console.WriteLine($"Connection to {pod.Name} established. Sending command...");
 
-                    // Relay the command to the pod.
-                    conn.SendCommand(command);
+                        // Relay the command to the pod.
+                        conn.SendCommand(command);
 
-                    Console.WriteLine($"Closing connection to {pod.Name()}...");
+                        Console.WriteLine($"Closing connection to {pod.Name}...");
+                    }
                 }
             });
         }
 
-        /// <summary>
-        /// Get the port number on which a pod is listening.
-        /// </summary>
-        /// <param name="pod">A worker pod.</param>
-        private static ushort GetPortNo(V1Pod pod, string podPortNoLabelName)
-        {
-            IDictionary<string, string> labels = pod.Metadata.Labels;
-            if (labels == null)
-                throw new InvalidOperationException($"Pod {pod.Name()} has no labels");
-            if (!labels.TryGetValue(podPortNoLabelName, out string portString))
-                throw new InvalidOperationException($"Pod {pod.Name()} has no {podPortNoLabelName} label");
-            if (!ushort.TryParse(portString, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort port))
-                throw new InvalidOperationException($"Unable to parse port number '{portString} for pod {pod.Name()}");
-            return port;
-        }
     }
 }

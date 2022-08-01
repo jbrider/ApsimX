@@ -55,6 +55,7 @@ namespace APSIM.Server.IO
 
             try
             {
+                //send acknowlednment that the message was received.
                 PipeUtilities.SendObjectToPipe(stream, ack);
             }
             catch
