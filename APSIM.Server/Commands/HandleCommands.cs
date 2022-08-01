@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -33,18 +34,37 @@ namespace APSIM.Server.Commands
                 throw new AggregateException("File ran with errors", errors);
 
         }
-
         public static void HandleCommandRelay(this ICommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
         {
             List<Task> tasks = new List<Task>();
             foreach (var pod in workers)
                 tasks.Add(RelayCommand(pod, command, relayOptions, podPortNoLabelName));
-            foreach (Task task in tasks)
+
+            Parallel.ForEach(tasks, task =>
             {
                 task.Wait();
                 if (task.Status == TaskStatus.Faulted || task.Exception != null)
                     throw new Exception($"{command} failed", task.Exception);
+            });
+        }
+
+        public static void HandleCommandRelay(this WGPCommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
+        {
+            Console.WriteLine($"Handling WGP Command Relay to see if it goes where it should");
+            List<Task> tasks = new List<Task>();
+            var workerCommands = command.VariablesToUpdate.Zip(workers, (cmd, worker) => (cmd, worker));
+            foreach (var wc in workerCommands)
+            {
+                var newCommand = new RunCommand(wc.cmd);
+                tasks.Add(RelayCommand(wc.worker, newCommand, relayOptions, podPortNoLabelName));
             }
+
+            Parallel.ForEach(tasks, task =>
+            {
+                task.Wait();
+                if (task.Status == TaskStatus.Faulted || task.Exception != null)
+                    throw new Exception($"{command} failed", task.Exception);
+            });
         }
 
         private static Task RelayCommand(V1Pod pod, ICommand command, RelayServerOptions relayOptions, string podPortNoLabelName)
