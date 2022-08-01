@@ -38,7 +38,7 @@ namespace APSIM.Server.Commands
         {
             if (command is WGPCommand)
             {
-                (command as WGPCommand).HandleCommandRelay(workers, relayOptions, podPortNoLabelName);
+                (command as WGPCommand).HandleWGPCommandRelay(workers, relayOptions, podPortNoLabelName);
                 return;
             }
             
@@ -54,7 +54,7 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static void HandleCommandRelay(this WGPCommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
+        public static void HandleWGPCommandRelay(this WGPCommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
         {
             Console.WriteLine($"Handling WGP Command Relay to see if it goes where it should");
             List<Task> tasks = new List<Task>();
