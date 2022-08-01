@@ -36,6 +36,12 @@ namespace APSIM.Server.Commands
         }
         public static void HandleCommandRelay(this ICommand command, IEnumerable<V1Pod> workers, RelayServerOptions relayOptions, string podPortNoLabelName)
         {
+            if (command is WGPCommand)
+            {
+                (command as WGPCommand).HandleCommandRelay(workers, relayOptions, podPortNoLabelName);
+                return;
+            }
+            
             List<Task> tasks = new List<Task>();
             foreach (var pod in workers)
                 tasks.Add(RelayCommand(pod, command, relayOptions, podPortNoLabelName));
