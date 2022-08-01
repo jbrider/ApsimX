@@ -62,9 +62,9 @@ namespace APSIM.Server
                     {
                         try
                         {
-                            WriteToLog("Waiting for connections...");
+                            //WriteToLog("Waiting for connections...");
                             conn.WaitForConnection();
-                            WriteToLog("Client connected to server.");
+                            //WriteToLog("Client connected to server.");
                             ICommand command;
                             while ( (command = GetCommand(conn)) != null)
                             {
@@ -89,7 +89,7 @@ namespace APSIM.Server
                                 }
                             }
 
-                            WriteToLog($"Connection closed by client.");
+                            //WriteToLog($"Connection closed by client.");
 
                             // If we don't want to keep the server alive we can exit now.
                             // Otherwise we will go back and wait for another connection.
@@ -114,7 +114,7 @@ namespace APSIM.Server
 
         private ICommand GetCommand(IConnectionManager connection)
         {
-            WriteToLog("Waiting for commands...");
+            //WriteToLog("Waiting for commands...");
             return connection.WaitForCommand();
         }
 
