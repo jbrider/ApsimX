@@ -201,7 +201,10 @@ namespace APSIM.Server
                 if (command.isQuery())
                 {
                     WriteToLog($"Relaying query...");
-                    result = (command as ReadQuery).HandleQueryRelay(workers);
+                    if(command is ReadQuery)
+                        result = (command as ReadQuery).HandleQueryRelay(workers);
+                    if (command is WGPRelayCommand)
+                        result = (command as WGPRelayCommand).HandleQueryRelay(workers);
                 }
                 else
                 {

@@ -1,0 +1,72 @@
+﻿using Models.Core.Replace;
+using Models.Storage;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace APSIM.Server.Commands
+{
+    public static class HandleWGPCommand
+    {
+        public static object HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
+        {
+            if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
+
+            var tasks = workers.Zip(wgpQuery.VariablesToUpdate, (WorkerPod pod, IEnumerable<IReplacement> iterationVariables) => 
+                RelayReadQuery(pod, new WGPCommand(iterationVariables, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
+
+            List<IEnumerable<double>> results = new List<IEnumerable<double>>();
+            foreach (var task in tasks)
+            {
+                task.Wait();
+                if (task.Status == TaskStatus.Faulted || task.Exception != null)
+                    throw new Exception($"{wgpQuery} failed", task.Exception);
+                
+                if (task.Result != null)
+                    results.Add(task.Result);
+            }
+            return results;
+        }
+
+        private static Task<IEnumerable<double>> RelayReadQuery(WorkerPod pod, WGPCommand query)
+        {
+            return Task.Run(() =>
+            {
+                if(pod.SocketConnection == null) throw new NotImplementedException("SocketConnnection not created.");
+                return pod.SocketConnection.SendQuery(query);
+            });
+        }
+
+        public static object HandleQuery(this WGPCommand wgpQuery, IDataStore storage)
+        {
+            if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
+
+            if (!storage.Reader.TableNames.Contains(wgpQuery.TableName))
+                throw new Exception($"Table {wgpQuery.TableName} does not exist in the database.");
+
+            var result = storage.Reader.GetData(wgpQuery.TableName, fieldNames: wgpQuery.OutputVariableNames);
+            if (result == null)
+                throw new Exception($"Unable to read table {wgpQuery.TableName} from datastore (cause unknown - but the table appears to exist)");
+
+            foreach (string param in wgpQuery.OutputVariableNames)
+                if (result.Columns[param] == null)
+                    throw new Exception($"Column {param} does not exist in table {wgpQuery.TableName}");
+
+            if(result.Rows.Count == 0)
+                throw new Exception($"Report was empty");
+
+            if (result.Rows.Count > 1)
+                throw new Exception($"Report had more than 1 result"); //debug for checking if table is rest
+            var lstVars = wgpQuery.OutputVariableNames.ToList();
+            var lstValues = new List<double>();
+            for (int i = 0; i < lstVars.Count;++i)
+            {
+                lstValues.Add(Convert.ToDouble(result.Rows[0][lstVars[i]]));
+            }
+            return lstValues;
+        }
+
+    }
+}

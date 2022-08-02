@@ -164,7 +164,11 @@ namespace APSIM.Server
                 if (command.isQuery())
                 {
                     WriteToLog($"Running query...");
-                    result = (command as ReadQuery).HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
+                    if (command is ReadQuery)
+                        result = (command as ReadQuery).HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
+                    
+                    if (command is WGPCommand)
+                        result = (command as WGPCommand).HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
                 }
                 else
                 {

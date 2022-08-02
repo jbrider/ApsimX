@@ -32,9 +32,9 @@ namespace APSIM.Server.Commands
         }
         public static void HandleCommandRelay(this ICommand command, IEnumerable<WorkerPod> workers)
         {
-            if (command is WGPCommand)
+            if (command is WGPRelayCommand)
             {
-                (command as WGPCommand).HandleCommandRelay(workers);
+                (command as WGPRelayCommand).HandleCommandRelay(workers);
                 return;
             }
             
@@ -50,26 +50,9 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static void HandleCommandRelay(this WGPCommand command, IEnumerable<WorkerPod> workers)
-        {
-            Console.WriteLine($"Handling WGP Command Relay to see if it goes where it should");
-            List<Task> tasks = new List<Task>();
-            var workerCommands = command.VariablesToUpdate.Zip(workers, (cmd, worker) => (cmd, worker));
-            foreach (var wc in workerCommands)
-            {
-                var newCommand = new RunCommand(wc.cmd);
-                tasks.Add(RelayCommand(wc.worker, newCommand));
-            }
 
-            Parallel.ForEach(tasks, task =>
-            {
-                task.Wait();
-                if (task.Status == TaskStatus.Faulted || task.Exception != null)
-                    throw new Exception($"{command} failed", task.Exception);
-            });
-        }
 
-        private static Task RelayCommand(WorkerPod pod, ICommand command)
+        public static Task RelayCommand(WorkerPod pod, ICommand command)
         {
             return Task.Run(() =>
             {
