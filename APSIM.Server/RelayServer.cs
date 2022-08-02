@@ -33,7 +33,7 @@ namespace APSIM.Server
         public string IPAddress { get; set; }
         public ushort Port { get; set; }
         public RelayServerOptions Options { get; set; }
-        public NetworkSocketClient? SocketConnection { get; set; }
+        public NetworkSocketClient SocketConnection { get; set; }
 
         public WorkerPod(V1Pod pod, RelayServerOptions relayOptions)
         {
