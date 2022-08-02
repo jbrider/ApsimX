@@ -32,6 +32,7 @@ namespace APSIM.Server.Commands
 
     }
 
+    [Serializable]
     public class WGPCommand : IQuery<IEnumerable<double>>
     {
         public IEnumerable<IReplacement> VariablesToUpdate { get; private set; }
