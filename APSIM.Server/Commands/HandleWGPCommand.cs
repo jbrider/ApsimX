@@ -1,7 +1,9 @@
 ﻿using Models.Core.Replace;
+using Models.Core.Run;
 using Models.Storage;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -39,9 +41,20 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static object HandleQuery(this WGPCommand wgpQuery, IDataStore storage)
+        public static object HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
+
+            var timer = Stopwatch.StartNew();
+            jobRunner.Replacements = wgpQuery.VariablesToUpdate;
+
+            List<Exception> errors = runner.Run();
+
+            timer.Stop();
+            Console.WriteLine($"Raw job took {timer.ElapsedMilliseconds}ms");
+
+            if (errors != null && errors.Count > 0)
+                throw new AggregateException("File ran with errors", errors);
 
             if (!storage.Reader.TableNames.Contains(wgpQuery.TableName))
                 throw new Exception($"Table {wgpQuery.TableName} does not exist in the database.");

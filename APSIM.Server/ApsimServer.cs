@@ -168,7 +168,7 @@ namespace APSIM.Server
                         result = (command as ReadQuery).HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
                     
                     if (command is WGPCommand)
-                        result = (command as WGPCommand).HandleQuery(sims.FindChild<Models.Storage.IDataStore>());
+                        result = (command as WGPCommand).HandleQuery(runner, jobRunner, sims.FindChild<Models.Storage.IDataStore>());
                 }
                 else
                 {
