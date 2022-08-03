@@ -20,15 +20,15 @@ namespace APSIM.Server.Commands
                 RelayReadQuery(pod, new WGPCommand(iterationVariables, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
 
             List<IEnumerable<double>> results = new List<IEnumerable<double>>();
-            foreach (var task in tasks)
+            Parallel.ForEach(tasks, task =>
             {
                 task.Wait();
                 if (task.Status == TaskStatus.Faulted || task.Exception != null)
                     throw new Exception($"{wgpQuery} failed", task.Exception);
-                
+
                 if (task.Result != null)
                     results.Add(task.Result);
-            }
+            });
             return results;
         }
 
@@ -74,6 +74,7 @@ namespace APSIM.Server.Commands
                 throw new Exception($"Report had more than 1 result"); //debug for checking if table is rest
             var lstVars = wgpQuery.OutputVariableNames.ToList();
             var lstValues = new List<double>();
+
             for (int i = 0; i < lstVars.Count;++i)
             {
                 lstValues.Add(Convert.ToDouble(result.Rows[0][lstVars[i]]));
