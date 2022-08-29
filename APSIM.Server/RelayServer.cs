@@ -376,8 +376,8 @@ namespace APSIM.Server
         public override void Dispose()
         {
             // RemoveWorkers();
-            WriteToLog("Deleting namespace...");
-            client.DeleteNamespace(podNamespace);
+            // WriteToLog("Deleting namespace...{" + podNamespace + "}");
+            // client.DeleteNamespace(podNamespace);
             client.Dispose();
         }
     }
