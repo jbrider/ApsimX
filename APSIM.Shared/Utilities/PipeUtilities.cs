@@ -61,6 +61,7 @@
                         { 
                             TypeNameHandling = TypeNameHandling.Objects,
                             ObjectCreationHandling = ObjectCreationHandling.Auto,
+                            TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Simple,
                         };
                     return JsonConvert.DeserializeObject(json,jset);
                 }
