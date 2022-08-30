@@ -1,4 +1,5 @@
-﻿using Models.Core.Replace;
+﻿using APSIM.Shared.Utilities;
+using Models.Core.Replace;
 using Models.Core.Run;
 using Models.Storage;
 using System;
@@ -15,6 +16,7 @@ namespace APSIM.Server.Commands
         public static object HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
+            Console.Write(ReflectionUtilities.JsonSerialise(wgpQuery, false));
 
             var tasks = workers.Zip(wgpQuery.VariablesToUpdate, (WorkerPod pod, IEnumerable<VariableReference> iterationVariables) => 
                 RelayReadQuery(pod, new WGPCommand(iterationVariables, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
@@ -34,6 +36,7 @@ namespace APSIM.Server.Commands
 
         private static Task<IEnumerable<double>> RelayReadQuery(WorkerPod pod, WGPCommand query)
         {
+            
             return Task.Run(() =>
             {
                 if(pod.SocketConnection == null) throw new NotImplementedException("SocketConnnection not created.");
