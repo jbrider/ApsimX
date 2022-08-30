@@ -18,7 +18,7 @@ namespace APSIM.Server.Commands
     [Serializable]
     public class WGPRelayCommand : IQuery<List<List<double>>>
     {
-        public List<List<VariableReference>> VariablesToUpdate { get; private set; }
+        public List<List<VariableReference>> VariablesToUpdate { get; set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -33,7 +33,7 @@ namespace APSIM.Server.Commands
         public IEnumerable<IEnumerable<double>> Result { get; set; }
         public WGPRelayCommand()
         {
-            //VariablesToUpdate = new List<>;
+            VariablesToUpdate = new List<List<VariableReference>>();
         }
 
         public WGPRelayCommand(List<List<VariableReference>> variables, string tableName, List<string> outputVariables)
