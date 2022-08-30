@@ -62,6 +62,7 @@ namespace APSIM.Server.Commands
             VariablesToUpdate = variables;
             TableName = tableName;
             OutputVariableNames = outputVariables;
+            Result = new List<double>();
         }
 
     }
