@@ -18,8 +18,8 @@ namespace APSIM.Server.Commands
     [Serializable]
     public class WGPRelayCommand : IQuery<List<List<double>>>
     {
-        public List<List<VariableReference>> VariablesToUpdate { get; set; }
-        public List<List<double>> VariablesValuesToUpdate { get; set; }
+        public List<string> VariablesToUpdate { get; set; }
+        public List<List<double>> ValuesToUpdate { get; set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -33,9 +33,10 @@ namespace APSIM.Server.Commands
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<IEnumerable<double>> Result { get; set; }
 
-        public WGPRelayCommand(List<List<VariableReference>> variables, string tableName, List<string> outputVariables)
+        public WGPRelayCommand(List<string> variables, List<List<double>> valuesToUpdate, string tableName, List<string> outputVariables)
         {
             VariablesToUpdate = variables;
+            ValuesToUpdate = valuesToUpdate;
             TableName = tableName;
             OutputVariableNames = outputVariables;
             Result = new List<List<double>>();
@@ -45,7 +46,8 @@ namespace APSIM.Server.Commands
     [Serializable]
     public class WGPCommand : IQuery<IEnumerable<double>>
     {
-        public List<VariableReference> VariablesToUpdate { get; set; }
+        public List<string> VariablesToUpdate { get; set; }
+        public List<double> ValuesToUpdate { get; set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -59,9 +61,10 @@ namespace APSIM.Server.Commands
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public List<double> Result { get; set; }
         
-        public WGPCommand(List<VariableReference> variables, string tableName, List<string> outputVariables)
+        public WGPCommand(List<string> variables, List<double> values, string tableName, List<string> outputVariables)
         {
             VariablesToUpdate = variables;
+            ValuesToUpdate= values; 
             TableName = tableName;
             OutputVariableNames = outputVariables;
             Result = new List<double>();

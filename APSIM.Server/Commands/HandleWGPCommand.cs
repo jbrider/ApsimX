@@ -18,8 +18,8 @@ namespace APSIM.Server.Commands
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
             Console.Write(ReflectionUtilities.JsonSerialise(wgpQuery, false));
 
-            var tasks = workers.Zip(wgpQuery.VariablesToUpdate, (WorkerPod pod, List<VariableReference> iterationVariables) => 
-                RelayReadQuery(pod, new WGPCommand(iterationVariables, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
+            var tasks = workers.Zip(wgpQuery.ValuesToUpdate, (WorkerPod pod, List<double> values) => 
+                RelayReadQuery(pod, new WGPCommand(wgpQuery.VariablesToUpdate, values, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
 
             List<IEnumerable<double>> results = new List<IEnumerable<double>>();
             Parallel.ForEach(tasks, task =>
@@ -49,7 +49,7 @@ namespace APSIM.Server.Commands
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
             var timer = Stopwatch.StartNew();
-            jobRunner.Replacements = wgpQuery.VariablesToUpdate.Select(v => new PropertyReplacement(v.Name, v.Value));
+            jobRunner.Replacements = wgpQuery.VariablesToUpdate.Zip(wgpQuery.ValuesToUpdate, (path, value) => new PropertyReplacement(path, value));
 
             List<Exception> errors = runner.Run();
 
