@@ -360,7 +360,7 @@
                         ContractResolver = new DynamicContractResolver(includePrivates, includeChildren),
                         ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
                         
-                        TypeNameHandling = TypeNameHandling.Objects,
+                        TypeNameHandling = TypeNameHandling.Auto,
                     });
         }
 
