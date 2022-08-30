@@ -19,6 +19,7 @@ namespace APSIM.Server.Commands
     public class WGPRelayCommand : IQuery<List<List<double>>>
     {
         public List<List<VariableReference>> VariablesToUpdate { get; set; }
+        public List<List<double>> VariablesValuesToUpdate { get; set; }
 
         public bool isQuery() => true;
         /// <summary>
