@@ -56,7 +56,8 @@ namespace APSIM.Server.Commands
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<double> Result { get; set; }
-
+        
+        public WGPCommand() { }
         public WGPCommand(IEnumerable<VariableReference> variables, string tableName, IEnumerable<string> outputVariables)
         {
             VariablesToUpdate = variables;
