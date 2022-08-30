@@ -43,7 +43,7 @@ namespace APSIM.Server.Commands
     [Serializable]
     public class WGPCommand : IQuery<IEnumerable<double>>
     {
-        public IEnumerable<IReplacement> VariablesToUpdate { get; private set; }
+        public IEnumerable<VariableReference> VariablesToUpdate { get; private set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -59,7 +59,7 @@ namespace APSIM.Server.Commands
 
         public WGPCommand(IEnumerable<VariableReference> variables, string tableName, IEnumerable<string> outputVariables)
         {
-            VariablesToUpdate = variables.Select(v => new PropertyReplacement(v.Name, v.Value));
+            VariablesToUpdate = variables;
             TableName = tableName;
             OutputVariableNames = outputVariables;
         }

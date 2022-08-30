@@ -46,7 +46,7 @@ namespace APSIM.Server.Commands
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
             var timer = Stopwatch.StartNew();
-            jobRunner.Replacements = wgpQuery.VariablesToUpdate;
+            jobRunner.Replacements = wgpQuery.VariablesToUpdate.Select(v => new PropertyReplacement(v.Name, v.Value));
 
             List<Exception> errors = runner.Run();
 
