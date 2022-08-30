@@ -1,4 +1,5 @@
-﻿using Models.Core.Replace;
+﻿using Models.Core;
+using Models.Core.Replace;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -30,6 +31,10 @@ namespace APSIM.Server.Commands
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<IEnumerable<double>> Result { get; set; }
+        public WGPRelayCommand()
+        {
+            //VariablesToUpdate = new List<>;
+        }
 
         public WGPRelayCommand(List<List<VariableReference>> variables, string tableName, List<string> outputVariables)
         {
@@ -57,7 +62,6 @@ namespace APSIM.Server.Commands
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public List<double> Result { get; set; }
         
-        public WGPCommand() { }
         public WGPCommand(List<VariableReference> variables, string tableName, List<string> outputVariables)
         {
             VariablesToUpdate = variables;
