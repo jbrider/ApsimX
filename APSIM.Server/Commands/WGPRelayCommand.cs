@@ -24,7 +24,7 @@ namespace APSIM.Server.Commands
         /// <summary>
         /// Name of the table from which parameters will be read.
         /// </summary>
-        public string TableName { get; private set; }
+        public string TableName { get; set; }
 
         /// <summary>Variables names to be extracted from the report.</summary>
         public List<string> OutputVariableNames { get; set; }
