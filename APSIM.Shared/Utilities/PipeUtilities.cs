@@ -1,5 +1,6 @@
 ﻿namespace APSIM.Shared.Utilities
 {
+    using Newtonsoft.Json;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -23,11 +24,16 @@
             MemoryStream result = new MemoryStream();
             using (Stream cryptoStream = new CryptoStream(result, new ToBase64Transform(), CryptoStreamMode.Write, leaveOpen: true))
             {
-                using (Stream serialised = ReflectionUtilities.BinarySerialise(obj))
+                using (StreamWriter streamWriter = new StreamWriter(cryptoStream))
                 {
-                    serialised.Seek(0, SeekOrigin.Begin);
-                    serialised.CopyTo(cryptoStream);
+                    string json = JsonConvert.SerializeObject(obj);
+                    streamWriter.WriteLine(json);
                 }
+                //using (Stream serialised = ReflectionUtilities.BinarySerialise(obj))
+                //{
+                //    serialised.Seek(0, SeekOrigin.Begin);
+                //    serialised.CopyTo(cryptoStream);
+                //}
             }
             return result;
         }
@@ -41,7 +47,13 @@
         {
             // Decode from base64, then deserialise the result.
             using (Stream cryptoStream = new CryptoStream(stream, new FromBase64Transform(), CryptoStreamMode.Read, leaveOpen: true))
-                return ReflectionUtilities.BinaryDeserialise(cryptoStream);
+            using (StreamReader streamReader = new StreamReader(stream, true))
+            {
+                JsonReader jsonReader = new JsonTextReader(streamReader);
+                string json = streamReader.ReadLine();
+                return JsonConvert.DeserializeObject(json);
+            }
+            //return ReflectionUtilities.BinaryDeserialise(cryptoStream);
         }
 
         /// <summary>
