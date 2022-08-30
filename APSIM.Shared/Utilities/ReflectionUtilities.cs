@@ -358,7 +358,9 @@
                     new JsonSerializerSettings
                     {
                         ContractResolver = new DynamicContractResolver(includePrivates, includeChildren),
-                        ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                        ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                        
+                        TypeNameHandling = TypeNameHandling.Objects,
                     });
         }
 
