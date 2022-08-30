@@ -16,7 +16,28 @@ namespace APSIM.Server.Commands
     }
 
     [Serializable]
-    public class WGPRelayCommand : IQuery<double[][]>
+    public class ResultsClass
+    {
+        public ResultsClass()
+        {
+            Results = new List<double>();
+        }
+        public List<double> Results { get; set; }
+    }
+
+    [Serializable]
+    public class CombinedResultsClass
+    {
+        public CombinedResultsClass()
+        {
+            Results = new List<List<double>>();
+        }
+        public List<List<double>> Results { get; set; }
+
+    }
+
+    [Serializable]
+    public class WGPRelayCommand : IQuery<CombinedResultsClass>
     {
         public List<string> VariablesToUpdate { get; set; }
         public List<List<double>> ValuesToUpdate { get; set; }
@@ -31,7 +52,7 @@ namespace APSIM.Server.Commands
         public List<string> OutputVariableNames { get; set; }
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
-        public IEnumerable<IEnumerable<double>> Result { get; set; }
+        public CombinedResultsClass ResultValues { get; set; }
 
         public WGPRelayCommand(List<string> variables, List<List<double>> valuesToUpdate, string tableName, List<string> outputVariables)
         {
@@ -39,12 +60,12 @@ namespace APSIM.Server.Commands
             ValuesToUpdate = valuesToUpdate;
             TableName = tableName;
             OutputVariableNames = outputVariables;
-            Result = new List<List<double>>();
+            ResultValues = new CombinedResultsClass();
         }
     }
 
     [Serializable]
-    public class WGPCommand : IQuery<double[]>
+    public class WGPCommand : IQuery<ResultsClass>
     {
         public List<string> VariablesToUpdate { get; set; }
         public List<double> ValuesToUpdate { get; set; }
@@ -59,7 +80,7 @@ namespace APSIM.Server.Commands
         public List<string> OutputVariableNames { get; set; }
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
-        public List<double> Result { get; set; }
+        public ResultsClass ResultValues { get; set; }
         
         public WGPCommand(List<string> variables, List<double> values, string tableName, List<string> outputVariables)
         {
@@ -67,7 +88,7 @@ namespace APSIM.Server.Commands
             ValuesToUpdate= values; 
             TableName = tableName;
             OutputVariableNames = outputVariables;
-            Result = new List<double>();
+            ResultValues = new ResultsClass();
         }
 
     }

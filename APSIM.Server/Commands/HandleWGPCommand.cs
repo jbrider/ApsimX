@@ -13,7 +13,7 @@ namespace APSIM.Server.Commands
 {
     public static class HandleWGPCommand
     {
-        public static double[][] HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
+        public static CombinedResultsClass HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
             Console.Write(ReflectionUtilities.JsonSerialise(wgpQuery, false));
@@ -21,7 +21,7 @@ namespace APSIM.Server.Commands
             var tasks = workers.Zip(wgpQuery.ValuesToUpdate, (WorkerPod pod, List<double> values) => 
                 RelayReadQuery(pod, new WGPCommand(wgpQuery.VariablesToUpdate, values, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
 
-            List<double[]> results = new List<double[]>();
+            var results = new CombinedResultsClass();
             Parallel.ForEach(tasks, task =>
             {
                 task.Wait();
@@ -29,12 +29,12 @@ namespace APSIM.Server.Commands
                     throw new Exception($"{wgpQuery} failed", task.Exception);
 
                 if (task.Result != null)
-                    results.Add(task.Result);
+                    results.Results.Add(task.Result.Results);
             });
-            return results.ToArray();
+            return results;
         }
 
-        private static Task<double[]> RelayReadQuery(WorkerPod pod, WGPCommand query)
+        private static Task<ResultsClass> RelayReadQuery(WorkerPod pod, WGPCommand query)
         {
             return Task.Run(() =>
             {
@@ -43,7 +43,7 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static double[] HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
+        public static ResultsClass HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
@@ -75,13 +75,13 @@ namespace APSIM.Server.Commands
             if (result.Rows.Count > 1)
                 throw new Exception($"Report had more than 1 result"); //debug for checking if table is rest
             var lstVars = wgpQuery.OutputVariableNames.ToList();
-            var lstValues = new List<double>();
+            var lstValues = new ResultsClass();
 
             for (int i = 0; i < lstVars.Count;++i)
             {
-                lstValues.Add(Convert.ToDouble(result.Rows[0][lstVars[i]]));
+                lstValues.Results.Add(Convert.ToDouble(result.Rows[0][lstVars[i]]));
             }
-            return lstValues.ToArray();
+            return lstValues;
         }
 
     }
