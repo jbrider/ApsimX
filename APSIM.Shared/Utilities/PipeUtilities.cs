@@ -51,6 +51,7 @@
             {
                 JsonReader jsonReader = new JsonTextReader(streamReader);
                 string json = streamReader.ReadLine();
+                Console.WriteLine("json reader: " + json);
                 return JsonConvert.DeserializeObject(json);
             }
             //return ReflectionUtilities.BinaryDeserialise(cryptoStream);
