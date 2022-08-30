@@ -59,7 +59,7 @@
                     Console.WriteLine("json reader: " + json);
                     var jset = new JsonSerializerSettings() 
                         { 
-                            TypeNameHandling = TypeNameHandling.All,
+                            TypeNameHandling = TypeNameHandling.Objects,
                             ObjectCreationHandling = ObjectCreationHandling.Auto,
                         };
                     return JsonConvert.DeserializeObject(json,jset);
