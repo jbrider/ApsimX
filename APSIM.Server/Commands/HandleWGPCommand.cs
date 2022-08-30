@@ -13,7 +13,7 @@ namespace APSIM.Server.Commands
 {
     public static class HandleWGPCommand
     {
-        public static object HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
+        public static List<List<double>> HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
             Console.Write(ReflectionUtilities.JsonSerialise(wgpQuery, false));
@@ -36,7 +36,6 @@ namespace APSIM.Server.Commands
 
         private static Task<List<double>> RelayReadQuery(WorkerPod pod, WGPCommand query)
         {
-            
             return Task.Run(() =>
             {
                 if(pod.SocketConnection == null) throw new NotImplementedException("SocketConnnection not created.");
@@ -44,7 +43,7 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static object HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
+        public static List<double> HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
