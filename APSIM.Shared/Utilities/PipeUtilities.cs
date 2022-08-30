@@ -55,9 +55,10 @@
                 using (StreamReader streamReader = new StreamReader(cryptoStream, true))
                 {
                     JsonReader jsonReader = new JsonTextReader(streamReader);
-                    string json = streamReader.ReadLine();
+                    string json = streamReader.ReadToEnd();
                     Console.WriteLine("json reader: " + json);
-                    return JsonConvert.DeserializeObject(json);
+                    var jset = new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.Objects };
+                    return JsonConvert.DeserializeObject(json,jset);
                 }
 
             }
