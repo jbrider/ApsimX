@@ -29,7 +29,7 @@ namespace APSIM.Server.Commands
             VariablesToUpdate = variables;
             TableName = tableName;
             OutputVariableNames = outputVariables;
-            Result = Enumerable.Empty<IEnumerable<double>>();
+            Result = new List<List<double>>();
         }
 
     }
