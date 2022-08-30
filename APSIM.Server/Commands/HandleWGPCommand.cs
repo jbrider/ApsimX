@@ -21,7 +21,7 @@ namespace APSIM.Server.Commands
             var tasks = workers.Zip(wgpQuery.ValuesToUpdate, (WorkerPod pod, List<double> values) => 
                 RelayReadQuery(pod, new WGPCommand(wgpQuery.VariablesToUpdate, values, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
 
-            List<IEnumerable<double>> results = new List<IEnumerable<double>>();
+            List<List<double>> results = new List<List<double>>();
             Parallel.ForEach(tasks, task =>
             {
                 task.Wait();
@@ -34,7 +34,7 @@ namespace APSIM.Server.Commands
             return results;
         }
 
-        private static Task<IEnumerable<double>> RelayReadQuery(WorkerPod pod, WGPCommand query)
+        private static Task<List<double>> RelayReadQuery(WorkerPod pod, WGPCommand query)
         {
             
             return Task.Run(() =>
