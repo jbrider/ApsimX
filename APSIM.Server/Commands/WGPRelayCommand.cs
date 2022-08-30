@@ -8,9 +8,16 @@ using System.Text;
 namespace APSIM.Server.Commands
 {
     [Serializable]
+    public class VariableReference 
+    {
+        public string Name { get; set; }
+        public double Value { get; set; }
+    }
+
+    [Serializable]
     public class WGPRelayCommand : IQuery<IEnumerable<IEnumerable<double>>>
     {
-        public IEnumerable<IEnumerable<(string variable, double value)>> VariablesToUpdate { get; private set; }
+        public IEnumerable<IEnumerable<VariableReference>> VariablesToUpdate { get; private set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -24,15 +31,15 @@ namespace APSIM.Server.Commands
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<IEnumerable<double>> Result { get; set; }
 
-        public WGPRelayCommand(IEnumerable<IEnumerable<(string variable, double value)>> variables, string tableName, IEnumerable<string> outputVariables)
+        public WGPRelayCommand(IEnumerable<IEnumerable<VariableReference>> variables, string tableName, IEnumerable<string> outputVariables)
         {
             VariablesToUpdate = variables;
             TableName = tableName;
             OutputVariableNames = outputVariables;
             Result = new List<List<double>>();
         }
-
     }
+
     [Serializable]
     public class WGPCommand : IQuery<IEnumerable<double>>
     {
@@ -50,9 +57,9 @@ namespace APSIM.Server.Commands
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<double> Result { get; set; }
 
-        public WGPCommand(IEnumerable<(string variable, double value)> variables, string tableName, IEnumerable<string> outputVariables)
+        public WGPCommand(IEnumerable<VariableReference> variables, string tableName, IEnumerable<string> outputVariables)
         {
-            VariablesToUpdate = variables.Select(v => new PropertyReplacement(v.variable, v.value));
+            VariablesToUpdate = variables.Select(v => new PropertyReplacement(v.Name, v.Value));
             TableName = tableName;
             OutputVariableNames = outputVariables;
         }

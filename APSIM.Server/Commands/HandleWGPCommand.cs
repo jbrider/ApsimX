@@ -16,7 +16,7 @@ namespace APSIM.Server.Commands
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
 
-            var tasks = workers.Zip(wgpQuery.VariablesToUpdate, (WorkerPod pod, IEnumerable<(string, double)> iterationVariables) => 
+            var tasks = workers.Zip(wgpQuery.VariablesToUpdate, (WorkerPod pod, IEnumerable<VariableReference> iterationVariables) => 
                 RelayReadQuery(pod, new WGPCommand(iterationVariables, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
 
             List<IEnumerable<double>> results = new List<IEnumerable<double>>();
