@@ -13,7 +13,7 @@ namespace APSIM.Server.Commands
 {
     public static class HandleWGPCommand
     {
-        public static List<List<double>> HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
+        public static double[][] HandleQueryRelay(this WGPRelayCommand wgpQuery, IEnumerable<WorkerPod> workers)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQueryRelay");
             Console.Write(ReflectionUtilities.JsonSerialise(wgpQuery, false));
@@ -21,7 +21,7 @@ namespace APSIM.Server.Commands
             var tasks = workers.Zip(wgpQuery.ValuesToUpdate, (WorkerPod pod, List<double> values) => 
                 RelayReadQuery(pod, new WGPCommand(wgpQuery.VariablesToUpdate, values, wgpQuery.TableName, wgpQuery.OutputVariableNames)));
 
-            List<List<double>> results = new List<List<double>>();
+            List<double[]> results = new List<double[]>();
             Parallel.ForEach(tasks, task =>
             {
                 task.Wait();
@@ -31,10 +31,10 @@ namespace APSIM.Server.Commands
                 if (task.Result != null)
                     results.Add(task.Result);
             });
-            return results;
+            return results.ToArray();
         }
 
-        private static Task<List<double>> RelayReadQuery(WorkerPod pod, WGPCommand query)
+        private static Task<double[]> RelayReadQuery(WorkerPod pod, WGPCommand query)
         {
             return Task.Run(() =>
             {
@@ -43,7 +43,7 @@ namespace APSIM.Server.Commands
             });
         }
 
-        public static List<double> HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
+        public static double[] HandleQuery(this WGPCommand wgpQuery, Runner runner, ServerJobRunner jobRunner, IDataStore storage)
         {
             if (wgpQuery == null) throw new Exception("Uknown query type in HandleQuery");
 
@@ -81,7 +81,7 @@ namespace APSIM.Server.Commands
             {
                 lstValues.Add(Convert.ToDouble(result.Rows[0][lstVars[i]]));
             }
-            return lstValues;
+            return lstValues.ToArray();
         }
 
     }

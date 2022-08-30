@@ -16,7 +16,7 @@ namespace APSIM.Server.Commands
     }
 
     [Serializable]
-    public class WGPRelayCommand : IQuery<List<List<double>>>
+    public class WGPRelayCommand : IQuery<double[][]>
     {
         public List<string> VariablesToUpdate { get; set; }
         public List<List<double>> ValuesToUpdate { get; set; }
@@ -44,7 +44,7 @@ namespace APSIM.Server.Commands
     }
 
     [Serializable]
-    public class WGPCommand : IQuery<List<double>>
+    public class WGPCommand : IQuery<double[]>
     {
         public List<string> VariablesToUpdate { get; set; }
         public List<double> ValuesToUpdate { get; set; }
