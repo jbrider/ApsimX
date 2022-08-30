@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Security.Cryptography;
     using System.Text;
+    using System.Text.Json;
 
     /// <summary>
     /// A collection of pipe utility methods.
@@ -26,9 +27,12 @@
             {
                 using (StreamWriter streamWriter = new StreamWriter(cryptoStream))
                 {
-                    string json = JsonConvert.SerializeObject(obj);
+                    //string json = JsonConvert.SerializeObject(obj);
+                    string json = ReflectionUtilities.JsonSerialise(obj, false);
+                    Console.WriteLine("serialised json: " + json);
                     streamWriter.WriteLine(json);
                 }
+                
                 //using (Stream serialised = ReflectionUtilities.BinarySerialise(obj))
                 //{
                 //    serialised.Seek(0, SeekOrigin.Begin);
