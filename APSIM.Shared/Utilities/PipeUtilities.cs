@@ -47,12 +47,15 @@
         {
             // Decode from base64, then deserialise the result.
             using (Stream cryptoStream = new CryptoStream(stream, new FromBase64Transform(), CryptoStreamMode.Read, leaveOpen: true))
-            using (StreamReader streamReader = new StreamReader(stream, true))
             {
-                JsonReader jsonReader = new JsonTextReader(streamReader);
-                string json = streamReader.ReadLine();
-                Console.WriteLine("json reader: " + json);
-                return JsonConvert.DeserializeObject(json);
+                using (StreamReader streamReader = new StreamReader(cryptoStream, true))
+                {
+                    JsonReader jsonReader = new JsonTextReader(streamReader);
+                    string json = streamReader.ReadLine();
+                    Console.WriteLine("json reader: " + json);
+                    return JsonConvert.DeserializeObject(json);
+                }
+
             }
             //return ReflectionUtilities.BinaryDeserialise(cryptoStream);
         }
