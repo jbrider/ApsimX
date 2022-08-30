@@ -31,10 +31,10 @@ namespace APSIM.Server.Commands
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<IEnumerable<double>> Result { get; set; }
-        public WGPRelayCommand()
-        {
-            //VariablesToUpdate = new List<List<VariableReference>>();
-        }
+        //public WGPRelayCommand()
+        //{
+        //    //VariablesToUpdate = new List<List<VariableReference>>();
+        //}
 
         public WGPRelayCommand(List<List<VariableReference>> variables, string tableName, List<string> outputVariables)
         {
