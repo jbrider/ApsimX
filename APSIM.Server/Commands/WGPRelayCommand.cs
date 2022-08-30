@@ -15,9 +15,9 @@ namespace APSIM.Server.Commands
     }
 
     [Serializable]
-    public class WGPRelayCommand : IQuery<IEnumerable<IEnumerable<double>>>
+    public class WGPRelayCommand : IQuery<List<List<double>>>
     {
-        public IEnumerable<IEnumerable<VariableReference>> VariablesToUpdate { get; private set; }
+        public List<List<VariableReference>> VariablesToUpdate { get; private set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -26,12 +26,12 @@ namespace APSIM.Server.Commands
         public string TableName { get; private set; }
 
         /// <summary>Variables names to be extracted from the report.</summary>
-        public IEnumerable<string> OutputVariableNames { get; private set; }
+        public List<string> OutputVariableNames { get; private set; }
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<IEnumerable<double>> Result { get; set; }
 
-        public WGPRelayCommand(IEnumerable<IEnumerable<VariableReference>> variables, string tableName, IEnumerable<string> outputVariables)
+        public WGPRelayCommand(List<List<VariableReference>> variables, string tableName, List<string> outputVariables)
         {
             VariablesToUpdate = variables;
             TableName = tableName;
@@ -43,7 +43,7 @@ namespace APSIM.Server.Commands
     [Serializable]
     public class WGPCommand : IQuery<IEnumerable<double>>
     {
-        public IEnumerable<VariableReference> VariablesToUpdate { get; private set; }
+        public List<VariableReference> VariablesToUpdate { get; private set; }
 
         public bool isQuery() => true;
         /// <summary>
@@ -52,13 +52,13 @@ namespace APSIM.Server.Commands
         public string TableName { get; private set; }
 
         /// <summary>Variables names to be extracted from the report.</summary>
-        public IEnumerable<string> OutputVariableNames { get; private set; }
+        public List<string> OutputVariableNames { get; private set; }
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
-        public IEnumerable<double> Result { get; set; }
+        public List<double> Result { get; set; }
         
         public WGPCommand() { }
-        public WGPCommand(IEnumerable<VariableReference> variables, string tableName, IEnumerable<string> outputVariables)
+        public WGPCommand(List<VariableReference> variables, string tableName, List<string> outputVariables)
         {
             VariablesToUpdate = variables;
             TableName = tableName;

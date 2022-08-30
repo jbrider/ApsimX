@@ -57,7 +57,7 @@
                     JsonReader jsonReader = new JsonTextReader(streamReader);
                     string json = streamReader.ReadToEnd();
                     Console.WriteLine("json reader: " + json);
-                    var jset = new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.Objects };
+                    var jset = new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All};
                     return JsonConvert.DeserializeObject(json,jset);
                 }
 
