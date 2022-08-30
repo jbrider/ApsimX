@@ -359,7 +359,6 @@
                     {
                         ContractResolver = new DynamicContractResolver(includePrivates, includeChildren),
                         ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                        TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full,
                         TypeNameHandling = TypeNameHandling.Objects,
                     });
         }

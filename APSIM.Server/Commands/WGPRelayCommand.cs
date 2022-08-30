@@ -31,10 +31,6 @@ namespace APSIM.Server.Commands
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public IEnumerable<IEnumerable<double>> Result { get; set; }
-        //public WGPRelayCommand()
-        //{
-        //    //VariablesToUpdate = new List<List<VariableReference>>();
-        //}
 
         public WGPRelayCommand(List<List<VariableReference>> variables, string tableName, List<string> outputVariables)
         {
@@ -54,10 +50,10 @@ namespace APSIM.Server.Commands
         /// <summary>
         /// Name of the table from which parameters will be read.
         /// </summary>
-        public string TableName { get; private set; }
+        public string TableName { get; set; }
 
         /// <summary>Variables names to be extracted from the report.</summary>
-        public List<string> OutputVariableNames { get; private set; }
+        public List<string> OutputVariableNames { get; set; }
 
         /// <summary>The result of the ReadCommand.Contains the data /// </summary>
         public List<double> Result { get; set; }
