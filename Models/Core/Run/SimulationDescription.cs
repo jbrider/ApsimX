@@ -170,10 +170,12 @@ namespace Models.Core.Run
                 newSimulation.Node.ClearLocator();
                 return newSimulation;
             }
-            catch (Exception err)
+            catch (Exception)
             {
                 var message = "Error in file: " + baseSimulation.FileName + " Simulation: " + Name;
-                throw new Exception(message, err);
+                Console.WriteLine(message);
+                
+                throw;
             }
         }
 
