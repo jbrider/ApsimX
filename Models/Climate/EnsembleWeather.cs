@@ -1,5 +1,6 @@
 ﻿using APSIM.Numerics;
 using APSIM.Shared.Utilities;
+using CommandLine;
 using Models.Core;
 using Models.Interfaces;
 using Newtonsoft.Json;
@@ -198,6 +199,15 @@ public class EnsembleWeather : Model, IWeather
     public DailyMetDataFromFile GetMetData(DateTime date)
     {
         int offset = (date - StartDate).Days;
+        if(offset >= MetData.Count || offset < 0)
+        {
+            string start = StartDate.ToString("dd/MM/yyyy");
+            string thisdate = date.ToString("dd/MM/yyyy");
+            string endDate = EndDate.ToString("dd/MM/yyyy");
+            string msg = $"Error: Invalid Index ({offset}). MaxIndex: {MetData.Count}. StartDate: {start}, End Date: {endDate}, This Date: {thisdate}. ";
+            Console.WriteLine(msg);
+            throw new Exception(msg);
+        }
         return MetData[offset];
     }
 
