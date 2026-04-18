@@ -71,13 +71,7 @@ namespace Models.Core.Run
         public List<Descriptor> Descriptors { get; set; } = new List<Descriptor>();
 
         /// <summary>Gets or sets the DataStore for this simulaton.</summary>
-        public IDataStore Storage
-        {
-            get
-            {
-                return baseSimulation.Node.WalkScoped().First(model => model is IDataStore) as IDataStore;
-            }
-        }
+        public IDataStore Storage; 
 
         /// <summary>Status message.</summary>
         public string Status => SimulationToRun?.Status;

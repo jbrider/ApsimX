@@ -284,6 +284,7 @@ namespace Models.Core.Run
                                     var description = job as SimulationDescription;
                                     foreach (var name in description.Descriptors.Where(d => d.Name == "SimulationName").Select(d => d.Value))
                                         names.Add(name);
+                                    description.Storage = storage;
                                 }
                             }
                             storage.Writer.Clean(names, false);
